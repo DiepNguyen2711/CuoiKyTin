@@ -1,1 +1,2 @@
 # CuoiKyTin
+Mọi người luôn nhớ lúc nào cũng phải vào web github này đầu tiên nhé, sau đó vào phần github desktop để ấn cái Fetch Origin với Current branch là nhánh main để coi như là cập nhật  hết bản mới nhất ở dự án của mình về nhé, rồi sau đó ai làm phần nào thì tạo nhánh tên phần đó theo cú pháp là "feature/tên nvu" rồi vào vs code như bình thường theo AI các thứ nhé. Nhớ có gì thắc mắc thì phải hỏi ngay 
