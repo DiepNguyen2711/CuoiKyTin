@@ -44,6 +44,7 @@ class Wallet(models.Model):
         return f"Ví của {self.user.username} | {self.balance_tc} TC"
 
 # ==========================================
+# ==========================================
 # 3. HỆ THỐNG NỘI DUNG (VIDEO)
 # ==========================================
 class Video(models.Model):
@@ -51,6 +52,9 @@ class Video(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='videos')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    
+    # ĐÂY LÀ DÒNG BẠN CẦN THÊM VÀO:
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='videos')
     
     # Đường dẫn file (nên thiết lập Upload vào folder 'videos/')
     file_url = models.FileField(upload_to='videos/') 
@@ -128,3 +132,127 @@ class WatchSession(models.Model):
 
     def __str__(self):
         return f"{self.user.username} xem {self.video.title} ({self.watched_seconds}s)"
+    
+# ... (Phần code hiện tại của bạn từ HỆ THỐNG NGƯỜI DÙNG đến HỆ THỐNG THEO DÕI SỰ CHÚ Ý) ...
+
+# ==========================================
+# 6. HỆ THỐNG PHÂN LOẠI & TỔ CHỨC NỘI DUNG (CATEGORY & COURSE)
+# ==========================================
+class Category(models.Model):
+    """Phân loại chủ đề cho Video/Khóa học"""
+    name = models.CharField(max_length=100, unique=True, verbose_name="Tên danh mục")
+    description = models.TextField(blank=True, null=True, verbose_name="Mô tả danh mục")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class Course(models.Model):
+    """
+    Tập hợp nhiều Video thành một lộ trình có cấu trúc.
+    """
+    title = models.CharField(max_length=255, verbose_name="Tên khóa học")
+    description = models.TextField(verbose_name="Mô tả chi tiết")
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='courses')
+    instructor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='taught_courses')
+    
+    # Liên kết nhiều-nhiều với Video. 
+    # Mở rộng model Video hiện tại để nó có thể thuộc về một hoặc nhiều Course.
+    videos = models.ManyToManyField(Video, related_name='courses', blank=True) 
+    
+    # Giá mua đứt cả khóa học (giảm giá so với mua lẻ từng video)
+    bundle_price_tc = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Giá trọn bộ (TC)")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+
+# ==========================================
+# 7. HỆ THỐNG TƯƠNG TÁC XÃ HỘI (SOCIAL FEATURES)
+# ==========================================
+class CommentReview(models.Model):
+    """
+    Kết hợp Bình luận và Đánh giá (Rating).
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField(verbose_name="Nội dung bình luận")
+    
+    # Đánh giá sao (1-5). Để null=True vì người dùng có thể chỉ comment chứ không rate.
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
+    rating = models.IntegerField(choices=RATING_CHOICES, null=True, blank=True, verbose_name="Đánh giá sao")
+    
+    # Có thể thêm self-referential để làm tính năng "Reply comment" nếu muốn:
+    # parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} bình luận trên {self.video.title}"
+
+
+class Follow(models.Model):
+    """
+    Lưu trữ quan hệ theo dõi giữa các User.
+    """
+    follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name='following')
+    following = models.ForeignKey(User, on_delete=models.CASCADE, related_name='followers')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Ràng buộc: Một người không thể follow người khác 2 lần
+        unique_together = ('follower', 'following') 
+
+    def __str__(self):
+        return f"{self.follower.username} -> {self.following.username}"
+
+
+class Notification(models.Model):
+    """
+    Thông báo hệ thống (có video mới, có người follow, v.v.)
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    content = models.CharField(max_length=255, verbose_name="Nội dung thông báo")
+    link = models.CharField(max_length=255, blank=True, null=True, verbose_name="Đường dẫn chuyển hướng")
+    is_read = models.BooleanField(default=False, verbose_name="Đã đọc?")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        status = "Đã đọc" if self.is_read else "Chưa đọc"
+        return f"[{status}] Thông báo cho {self.user.username}"
+
+
+# ==========================================
+# 8. HỆ THỐNG PHÂN TÍCH DỮ LIỆU SÂU (ADVANCED ANALYTICS)
+# ==========================================
+class UserBehavior(models.Model):
+    """
+    Ghi nhận log hành vi chi tiết. Khác với WatchSession (dùng để ping time thật & mở khóa),
+    bảng này lưu vết dạng event log để chạy các mô hình thống kê, kinh tế lượng sau này.
+    Ví dụ: Phân tích các yếu tố ảnh hưởng đến tỷ lệ rời bỏ (drop-off rate).
+    """
+    EVENT_TYPES = (
+        ('PLAY', 'Bắt đầu xem'),
+        ('PAUSE', 'Tạm dừng'),
+        ('SEEK', 'Tua video'),
+        ('COMPLETE', 'Xem xong'),
+        ('DROP_OFF', 'Thoát giữa chừng'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='behavior_logs')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE)
+    
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    
+    # Thời điểm trong video (tính bằng giây) mà event xảy ra.
+    # Rất hữu ích để chạy mô hình hồi quy xem đoạn nào của video khiến người dùng thoát nhiều nhất.
+    video_timestamp_seconds = models.IntegerField(default=0, help_text="Vị trí thời gian trong video lúc xảy ra event")
+    
+    device_info = models.CharField(max_length=150, blank=True, null=True, help_text="User Agent/Thiết bị")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Log: {self.user.username if self.user else 'Ẩn danh'} - {self.event_type} - {self.video.title}"
+
