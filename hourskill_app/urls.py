@@ -8,4 +8,5 @@ urlpatterns = [
     path('api/login/', views.api_login, name='api_login'),
     path('main/', views.main_view, name='main_view'),
     path('logout/', views.user_logout, name='logout'),
+    path('api/ping-watch/', views.ping_watch_session, name='ping_watch_session'),
 ]
