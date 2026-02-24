@@ -2,15 +2,25 @@
 <!doctype html>
 <html>
   <head>
-    <title>Đăng ký</title>
+    <title>Đăng ký - HourSkill</title>
     <link rel="stylesheet" href="{% static 'tailwind.css' %}" />
+    <style>
+      /* 1. Ẩn con mắt mặc định của trình duyệt để không bị chồng chéo */
+      input::-ms-reveal, input::-ms-clear { display: none; }
+      
+      /* 2. Giữ nguyên vị trí cho con mắt xịn */
+      .relative { position: relative; }
+      .absolute { position: absolute; }
+      .eye-icon { cursor: pointer; color: #6b7280; display: flex; align-items: center; }
+      .eye-icon:hover { color: #3b82f6; }
+    </style>
   </head>
   <body>
     <div class="auth-container">
       <div class="auth-card">
         <h2>Đăng ký</h2>
 
-        <div class="auth-error" id="error"></div>
+        <div id="error" class="auth-error" style="color: red; margin-bottom: 10px;"></div>
 
         <div class="auth-input-group">
           <label>Họ và tên</label>
@@ -24,16 +34,28 @@
 
         <div class="auth-input-group">
           <label>Mật khẩu</label>
-          <input type="password" id="password" placeholder="Ít nhất 8 ký tự" />
+          <div class="relative">
+            <input type="password" id="password" style="width: 100%; padding-right: 40px;" placeholder="Ít nhất 8 ký tự" />
+            <span class="eye-icon absolute" style="right: 10px; top: 50%; transform: translateY(-50%);" onclick="togglePassword('password')">
+              <svg id="eye-icon-password" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.483 8.61 6.746 6.333 10 6.333s6.517 2.277 7.964 5.345a1.012 1.012 0 0 1 0 .644C16.517 15.39 13.254 17.667 10 17.667s-6.517-2.277-7.964-5.345Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </span>
+          </div>
         </div>
 
         <div class="auth-input-group">
           <label>Xác nhận mật khẩu</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            placeholder="Nhập lại mật khẩu"
-          />
+          <div class="relative">
+            <input type="password" id="confirmPassword" style="width: 100%; padding-right: 40px;" placeholder="Nhập lại mật khẩu" />
+            <span class="eye-icon absolute" style="right: 10px; top: 50%; transform: translateY(-50%);" onclick="togglePassword('confirmPassword')">
+              <svg id="eye-icon-confirmPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.483 8.61 6.746 6.333 10 6.333s6.517 2.277 7.964 5.345a1.012 1.012 0 0 1 0 .644C16.517 15.39 13.254 17.667 10 17.667s-6.517-2.277-7.964-5.345Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </span>
+          </div>
         </div>
 
         <button class="auth-button" onclick="register()">Đăng ký</button>
@@ -45,46 +67,50 @@
     </div>
 
     <script>
+      function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById('eye-icon-' + inputId);
+        if (input.type === "password") {
+          input.type = "text";
+          icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />`;
+        } else {
+          input.type = "password";
+          icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.483 8.61 6.746 6.333 10 6.333s6.517 2.277 7.964 5.345a1.012 1.012 0 0 1 0 .644C16.517 15.39 13.254 17.667 10 17.667s-6.517-2.277-7.964-5.345Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />`;
+        }
+      }
+
       async function register() {
         const fullName = document.getElementById("fullName").value;
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
-        const confirmPassword =
-          document.getElementById("confirmPassword").value;
+        const confirmPassword = document.getElementById("confirmPassword").value;
         const errorText = document.getElementById("error");
 
         errorText.innerText = "";
-
-        // ===== Validate phía client =====
         if (!fullName || !email || !password || !confirmPassword) {
           errorText.innerText = "Vui lòng nhập đầy đủ thông tin";
           return;
         }
-
-        if (password.length < 8) {
-          errorText.innerText = "Mật khẩu phải ít nhất 8 ký tự";
-          return;
-        }
-
         if (password !== confirmPassword) {
-          errorText.innerText = "Mật khẩu xác nhận không khớp";
+          errorText.innerText = "Mật khẩu không khớp";
           return;
         }
 
-        // ===== Gửi lên server =====
-        const res = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, email, password, confirmPassword }),
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          alert(data.message);
-          window.location.href = "login.html";
-        } else {
-          errorText.innerText = data.message;
+        try {
+          const res = await fetch("/api/register/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: fullName, email, password }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert("Đăng ký thành công!");
+            window.location.href = "/login/";
+          } else {
+            errorText.innerText = data.message;
+          }
+        } catch (err) {
+          errorText.innerText = "Lỗi kết nối server!";
         }
       }
     </script>
