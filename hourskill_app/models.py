@@ -52,7 +52,7 @@ class Video(models.Model):
     title = models.CharField(max_length=255, db_index=True) 
 
     """Lưu trữ thông tin về các khóa học/video"""
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='videos', null=True, blank=True)
+    course = models.ForeignKey('Course', on_delete=models.CASCADE, related_name='videos', null=True, blank=True)
     category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='videos')
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_videos')
     description = models.TextField(blank=True)

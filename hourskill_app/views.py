@@ -5,6 +5,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from hourskill_app.models import User, Wallet
 from django.http import JsonResponse # Dùng nếu muốn trả về API thay vì giao diện
+from .models import WatchSession
 
 # 1. Hàm xử lý Đăng ký
 def register_view(request):
@@ -100,3 +101,23 @@ def main_view(request):
 def user_logout(request):
     logout(request) # Lệnh này sẽ xóa phiên đăng nhập hiện tại
     return redirect('main_view') # Đăng xuất xong ở lại luôn trang chủ
+
+# API nhận nhịp Ping
+@csrf_exempt # Tạm thời tắt CSRF để test API dễ dàng
+def ping_watch_session(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        session_id = data.get('session_id')
+        
+        try:
+            # Tìm phiên xem hiện tại
+            session = WatchSession.objects.get(id=session_id)
+            
+            # Cập nhật số giây đã xem (Cộng thêm 10 giây mỗi lần ping)
+            session.watched_seconds += 10 
+            # (Thực tế bạn sẽ kết hợp lưu last_ping_time để chống hack)
+            session.save()
+            
+            return JsonResponse({'status': 'success', 'watched_seconds': session.watched_seconds})
+        except WatchSession.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Session not found'}, status=404)
