@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOURSKILLS</title>
+    <link rel="stylesheet" href="tailwind.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="bg-gray-800 text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center flex-wrap gap-4">
+            
+            <!-- Logo -->
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📚</span>
+                <a href="#" class="text-2xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex gap-6 items-center flex-wrap">
+                <a href="#home" class="text-gray-300 hover:text-blue-400 transition">Trang chủ</a>
+                <a href="#services" class="text-gray-300 hover:text-blue-400 transition">Dịch vụ</a>
+                <a href="#about" class="text-gray-300 hover:text-blue-400 transition">Về chúng tôi</a>
+                <a href="#blog" class="text-gray-300 hover:text-blue-400 transition">Blog</a>
+                <a href="#contact" class="text-gray-300 hover:text-blue-400 transition">Liên hệ</a>
+            </nav>
+
+            <!-- Search Box -->
+            <div class="flex gap-2">
+                <input type="text" placeholder="Tìm kiếm..." class="px-4 py-2 rounded bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">🔍</button>
+            </div>
+
+            <!-- User Menu -->
+            <div class="flex gap-3">
+                <a href="login.html" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Đăng nhập</a>
+                <a href="register.html" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition">Đăng ký</a>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT WITH SIDEBAR -->
+    <div class="layout flex">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-gray-100 p-6 fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto sidebar">
+            <h2 class="text-2xl font-bold text-blue-500 mb-6 menu-title">Menu</h2>
+
+            <nav class="flex flex-col gap-4 text-blue-600 text-lg menu">   
+                <a href="#home" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Trang chủ</a>
+                <a href="#courses" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Khóa học</a>
+                <a href="#services" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Dịch vụ</a>
+                <a href="#about" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Về chúng tôi</a>
+                <a href="#blog" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Blog</a>
+                <a href="#teachers" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Giáo viên</a>
+                <a href="#testimonials" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Đánh giá</a>
+                <a href="#contact" class="px-4 py-3 rounded hover:bg-gray-800 transition menu-item">Liên hệ</a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="ml-64 flex-1 px-10 py-12 bg-gray-50">
+        <!-- Toàn bộ section của bạn đặt ở đây -->
+            <!-- HOME SECTION -->
+            <section id="home" class="mb-16">
+                <h1 class="text-4xl font-bold text-gray-800 mb-4">Xin chào bạn đến với HOURSKILLS!</h1>
+                <p class="text-lg text-gray-600">Nền tảng học trực tuyến hàng đầu với các khóa học chất lượng cao từ các giáo viên giàu kinh nghiệm.</p>
+            </section>
+
+            <!-- COURSES SECTION -->
+            <section id="courses" class="mb-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">📚 Khóa học</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-blue-500">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Lập trình Web cơ bản</h3>
+                        <p class="text-gray-600 mb-3">Học HTML, CSS, JavaScript từ đầu</p>
+                        <button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Xem chi tiết</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-green-500">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Python cho người mới bắt đầu</h3>
+                        <p class="text-gray-600 mb-3">Nắm vững Python từ cơ bản đến nâng cao</p>
+                        <button class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition">Xem chi tiết</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-purple-500">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Thiết kế UI/UX</h3>
+                        <p class="text-gray-600 mb-3">Trở thành designer chuyên nghiệp</p>
+                        <button class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition">Xem chi tiết</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-orange-500">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">SEO và Marketing Digital</h3>
+                        <p class="text-gray-600 mb-3">Chinh phục thế giới digital marketing</p>
+                        <button class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition">Xem chi tiết</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SERVICES SECTION -->
+            <section id="services" class="mb-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">🔧 Dịch vụ</h2>
+                <div class="space-y-4">
+                    <div class="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Tư vấn học tập</h3>
+                        <p class="text-gray-600">Nhận tư vấn từ các chuyên gia về hành trình học tập của bạn</p>
+                    </div>
+                    <div class="bg-green-50 p-6 rounded-lg border-l-4 border-green-500">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Hỗ trợ 24/7</h3>
+                        <p class="text-gray-600">Đội hỗ trợ luôn sẵn sàng giúp bạn giải quyết vấn đề</p>
+                    </div>
+                    <div class="bg-purple-50 p-6 rounded-lg border-l-4 border-purple-500">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Chứng chỉ hoàn thành</h3>
+                        <p class="text-gray-600">Nhận chứng chỉ được công nhận khi hoàn thành khóa học</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABOUT SECTION -->
+            <section id="about" class="mb-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">ℹ️ Về chúng tôi</h2>
+                <div class="bg-gray-50 p-8 rounded-lg">
+                    <p class="text-gray-700 mb-4">HOURSKILLS là nền tảng học trực tuyến hàng đầu tại Việt Nam, cung cấp các khóa học về công nghệ, thiết kế, marketing và nhiều lĩnh vực khác.</p>
+                    <p class="text-gray-700">Chúng tôi cam kết mang đến chất lượng giáo dục tốt nhất với giáo viên giàu kinh nghiệm và nội dung cập nhật liên tục.</p>
+                </div>
+            </section>
+
+            <!-- BLOG SECTION -->
+            <section id="blog" class="mb-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">✍️ Blog</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <article class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Tips Belajar Lập Trình Hiệu Quả</h3>
+                        <p class="text-gray-600 text-sm mb-3">23/02/2026</p>
+                        <p class="text-gray-700">Hãy khám phá những mẹo và kỹ thuật giúp bạn học lập trình nhanh hơn...</p>
+                    </article>
+                    <article class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Xu hướng Công nghệ 2026</h3>
+                        <p class="text-gray-600 text-sm mb-3">23/02/2026</p>
+                        <p class="text-gray-700">Những công nghệ mới nổi mà bạn cần biết trong năm 2026...</p>
+                    </article>
+                </div>
+            </section>
+
+            <!-- TEACHERS SECTION -->
+            <section id="teachers" class="mb-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">👨‍🏫 Giáo viên</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition text-center">
+                        <div class="text-4xl mb-3">👨‍💼</div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">Nguyễn Văn A</h3>
+                        <p class="text-gray-600 text-sm">Chuyên gia Lập Trình Web</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition text-center">
+                        <div class="text-4xl mb-3">👩‍💼</div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">Trần Thị B</h3>
+                        <p class="text-gray-600 text-sm">Chuyên gia Thiết Kế UI/UX</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition text-center">
+                        <div class="text-4xl mb-3">👨‍💼</div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">Phạm Văn C</h3>
+                        <p class="text-gray-600 text-sm">Chuyên gia Python & AI</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TESTIMONIALS SECTION -->
+            <section id="testimonials" class="mb-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">⭐ Đánh giá từ học viên</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-yellow-50 p-6 rounded-lg border-l-4 border-yellow-500">
+                        <div class="flex items-center gap-1 mb-3">⭐⭐⭐⭐⭐</div>
+                        <p class="text-gray-700 mb-3">"Khóa học rất hữu ích! Tôi đã học được rất nhiều kiến thức thực tế."</p>
+                        <p class="text-gray-600 font-semibold">- Nguyễn Hữu D</p>
+                    </div>
+                    <div class="bg-yellow-50 p-6 rounded-lg border-l-4 border-yellow-500">
+                        <div class="flex items-center gap-1 mb-3">⭐⭐⭐⭐⭐</div>
+                        <p class="text-gray-700 mb-3">"Giáo viên dạy rất tận tâm, nội dung dễ hiểu và thực hành nhiều."</p>
+                        <p class="text-gray-600 font-semibold">- Vũ Thị E</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CONTACT SECTION -->
+            <section id="contact" class="mb-16 contact-form">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">📧 Liên hệ chúng tôi</h2>
+                <form class="bg-white p-8 rounded-lg shadow-md max-w-2xl">
+                    <div class="mb-4 form-group">
+                        <label class="block text-gray-700 font-semibold mb-2">Họ và tên</label>
+                        <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập tên của bạn">
+                    </div>
+                    <div class="mb-4 form-group">
+                        <label class="block text-gray-700 font-semibold mb-2">Email</label>
+                        <input type="email" class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="email@example.com">
+                    </div>
+                    <div class="mb-4 form-group">
+                        <label class="block text-gray-700 font-semibold mb-2">Tin nhắn</label>
+                        <textarea rows="5" class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập tin nhắn của bạn"></textarea>
+                    </div>
+                    <button type="submit" class="px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 transition font-semibold">Gửi tin nhắn</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-800 text-white mt-12 py-12">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h3 class="text-xl font-bold text-blue-400 mb-4">Về HOURSKILLS</h3>
+                <ul class="space-y-2 text-gray-300">
+                    <li><a href="#home" class="hover:text-blue-400 transition">Trang chủ</a></li>
+                    <li><a href="#about" class="hover:text-blue-400 transition">Về chúng tôi</a></li>
+                    <li><a href="#courses" class="hover:text-blue-400 transition">Khóa học</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-blue-400 mb-4">Dịch vụ</h3>
+                <ul class="space-y-2 text-gray-300">
+                    <li><a href="#services" class="hover:text-blue-400 transition">Dịch vụ</a></li>
+                    <li><a href="#teachers" class="hover:text-blue-400 transition">Giáo viên</a></li>
+                    <li><a href="#blog" class="hover:text-blue-400 transition">Blog</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-blue-400 mb-4">Liên hệ</h3>
+                <ul class="space-y-2 text-gray-300">
+                    <li><a href="mailto:example@gmail.com" class="hover:text-blue-400 transition">📧 example@gmail.com</a></li>
+                    <li><a href="tel:+84123456789" class="hover:text-blue-400 transition">📞 +84 123 456 789</a></li>
+                    <li><p>📍 Hà Nội, Việt Nam</p></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-blue-400 mb-4">Theo dõi chúng tôi</h3>
+                <div class="space-y-2 text-gray-300">
+                    <p><a href="#" class="hover:text-blue-400 transition">Facebook</a></p>
+                    <p><a href="#" class="hover:text-blue-400 transition">Instagram</a></p>
+                    <p><a href="#" class="hover:text-blue-400 transition">LinkedIn</a></p>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-6 border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+            <p>&copy; 2026 HOURSKILLS. Bảo lưu mọi quyền.</p>
+        </div>
+    </footer>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        const token = localStorage.getItem("token");
+        const userMenu = document.querySelector(".flex.gap-3");
+
+        if (token) {
+            userMenu.innerHTML = `
+            <span class="px-4 py-2 bg-gray-200 text-gray-800 rounded">
+                👋 Xin chào!
+            </span>
+            <button onclick="logout()" 
+                class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+                Logout
+            </button>
+            `;
+        }
+        });
+
+        function logout() {
+        localStorage.removeItem("token");
+        window.location.reload();
+        }
+    </script>
+</body>
+</html>
