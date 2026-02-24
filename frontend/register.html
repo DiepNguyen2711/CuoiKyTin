@@ -1,87 +1,92 @@
-<!DOCTYPE html>
+{% load static %}
+<!doctype html>
 <html>
-<head>
-  <title>Đăng ký</title>
-  <link rel="stylesheet" href="tailwind.css">
-</head>
-<body>
+  <head>
+    <title>Đăng ký</title>
+    <link rel="stylesheet" href="{% static 'tailwind.css' %}" />
+  </head>
+  <body>
     <div class="auth-container">
-    <div class="auth-card">
+      <div class="auth-card">
         <h2>Đăng ký</h2>
 
         <div class="auth-error" id="error"></div>
 
         <div class="auth-input-group">
-        <label>Họ và tên</label>
-        <input type="text" id="fullName" placeholder="Nhập họ và tên">
+          <label>Họ và tên</label>
+          <input type="text" id="fullName" placeholder="Nhập họ và tên" />
         </div>
 
         <div class="auth-input-group">
-        <label>Email</label>
-        <input type="email" id="email" placeholder="email@example.com">
+          <label>Email</label>
+          <input type="email" id="email" placeholder="email@example.com" />
         </div>
 
         <div class="auth-input-group">
-        <label>Mật khẩu</label>
-        <input type="password" id="password" placeholder="Ít nhất 8 ký tự">
+          <label>Mật khẩu</label>
+          <input type="password" id="password" placeholder="Ít nhất 8 ký tự" />
         </div>
 
         <div class="auth-input-group">
-        <label>Xác nhận mật khẩu</label>
-        <input type="password" id="confirmPassword" placeholder="Nhập lại mật khẩu">
+          <label>Xác nhận mật khẩu</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            placeholder="Nhập lại mật khẩu"
+          />
         </div>
 
         <button class="auth-button" onclick="register()">Đăng ký</button>
 
         <div class="auth-footer">
-        Đã có tài khoản? <a href="login.html">Đăng nhập</a>
+          Đã có tài khoản? <a href="{% url 'login' %}">Đăng nhập</a>
         </div>
+      </div>
     </div>
-    </div>
 
-<script>
-async function register() {
-  const fullName = document.getElementById("fullName").value;
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const confirmPassword = document.getElementById("confirmPassword").value;
-  const errorText = document.getElementById("error");
+    <script>
+      async function register() {
+        const fullName = document.getElementById("fullName").value;
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const confirmPassword =
+          document.getElementById("confirmPassword").value;
+        const errorText = document.getElementById("error");
 
-  errorText.innerText = "";
+        errorText.innerText = "";
 
-  // ===== Validate phía client =====
-  if (!fullName || !email || !password || !confirmPassword) {
-    errorText.innerText = "Vui lòng nhập đầy đủ thông tin";
-    return;
-  }
+        // ===== Validate phía client =====
+        if (!fullName || !email || !password || !confirmPassword) {
+          errorText.innerText = "Vui lòng nhập đầy đủ thông tin";
+          return;
+        }
 
-  if (password.length < 8) {
-    errorText.innerText = "Mật khẩu phải ít nhất 8 ký tự";
-    return;
-  }
+        if (password.length < 8) {
+          errorText.innerText = "Mật khẩu phải ít nhất 8 ký tự";
+          return;
+        }
 
-  if (password !== confirmPassword) {
-    errorText.innerText = "Mật khẩu xác nhận không khớp";
-    return;
-  }
+        if (password !== confirmPassword) {
+          errorText.innerText = "Mật khẩu xác nhận không khớp";
+          return;
+        }
 
-  // ===== Gửi lên server =====
-  const res = await fetch("/api/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fullName, email, password, confirmPassword }),
-  });
+        // ===== Gửi lên server =====
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName, email, password, confirmPassword }),
+        });
 
-  const data = await res.json();
+        const data = await res.json();
 
-  if (res.ok) {
-    alert(data.message);
-    window.location.href = "login.html";
-  } else {
-    errorText.innerText = data.message;
-  }
-}
-</script>
-
-</body>
+        if (res.ok) {
+          alert(data.message);
+          window.location.href = "login.html";
+        } else {
+          errorText.innerText = data.message;
+        }
+      }
+    </script>
+  </body>
 </html>
