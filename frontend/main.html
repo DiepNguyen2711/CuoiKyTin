@@ -1,147 +1,174 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" id="html-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HOURSKILLS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    
     <link rel="stylesheet" href="{% static 'tailwind.css' %}">
-    <style>
-        /* Đảm bảo sidebar không đè lên content */
-        .sidebar { top: 64px; } 
-    </style>
 </head>
-<body class="bg-gray-50">
 
-    <header class="bg-gray-800 text-white sticky top-0 z-50 shadow-md h-16">
-        <div class="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
+<body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+    <header class="bg-[#1a2236] dark:bg-gray-950 text-white sticky top-0 z-50 shadow-md h-16 transition-colors duration-300">
+        <div class="w-full mx-auto px-6 h-full flex justify-between items-center relative">
             
             <div class="flex items-center gap-2">
                 <span class="text-2xl">📚</span>
-                <a href="/" class="text-2xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
+                <a href="/" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
             </div>
 
-            <div class="hidden md:flex items-center">
+            <div class="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 w-[400px]">
                 <input type="text" placeholder="Tìm kiếm khóa học..." 
-                       class="h-10 px-4 w-64 rounded-l bg-gray-700 text-white border-none focus:ring-2 focus:ring-blue-500 text-sm">
-                <button class="h-10 px-4 bg-blue-600 text-white rounded-r hover:bg-blue-700 transition">
+                       class="h-9 px-4 w-full rounded-l bg-gray-700 dark:bg-gray-800 text-white border border-transparent dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm placeholder-gray-400 transition-colors duration-300">
+                <button class="h-9 px-5 bg-blue-600 text-white rounded-r hover:bg-blue-700 transition flex items-center justify-center">
                     🔍
                 </button>
             </div>
 
-            <div id="user-menu" class="flex items-center gap-4">
-                <a href="{% url 'login' %}" class="h-10 px-4 flex items-center bg-blue-500 text-white rounded hover:bg-blue-600 transition text-sm font-semibold">Đăng nhập</a>
-                <a href="{% url 'register' %}" class="h-10 px-4 flex items-center bg-green-500 text-white rounded hover:bg-green-600 transition text-sm font-semibold">Đăng ký</a>
+            <div class="flex gap-3 items-center" id="userMenu">
+                
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-700 transition focus:outline-none">
+                    <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
+                </button>
+
+                {% if request.user.is_authenticated %}
+                    <div class="flex items-center gap-3 bg-gray-700 pr-1 pl-3 py-1 rounded-full border border-gray-600 h-10">
+                        <span class="text-sm font-medium text-gray-200">
+                            Chào, <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                        </span>
+                        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-blue-400 shrink-0">
+                            <svg class="w-6 h-6 text-gray-400 mt-1 shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <form action="{% url 'logout' %}" method="post" class="m-0 p-0 flex">
+                        {% csrf_token %}
+                        <button type="submit" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất khỏi HOURSKILLS?')" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium shadow-sm">
+                            Đăng xuất
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition text-sm font-semibold no-underline">Đăng nhập</a>
+                    <a href="{% url 'register' %}" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition text-sm font-semibold no-underline">Đăng ký</a>
+                {% endif %}
             </div>
         </div>
     </header>
 
-    <div class="layout flex">
-        <aside class="w-64 bg-white border-r border-gray-200 p-6 fixed left-0 h-[calc(100vh-4rem)] overflow-y-auto sidebar">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Danh mục</h2>
+    <div class="flex flex-1 relative">
+        
+        <aside class="w-64 bg-[#f1f5f9] dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6 fixed left-0 top-16 bottom-0 overflow-y-auto z-40 transition-colors duration-300">
+            <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Danh mục</h2>
             <nav class="flex flex-col gap-1">   
-                <a href="#home" class="px-4 py-3 rounded text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">🏠 Trang chủ</a>
-                <a href="#courses" class="px-4 py-3 rounded text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">📚 Khóa học</a>
-                <a href="#services" class="px-4 py-3 rounded text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">🔧 Dịch vụ</a>
-                <a href="#teachers" class="px-4 py-3 rounded text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">👨‍🏫 Giáo viên</a>
-                <a href="#blog" class="px-4 py-3 rounded text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">✍️ Blog</a>
-                <a href="#contact" class="px-4 py-3 rounded text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">📧 Liên hệ</a>
+                <a href="#home" class="px-4 py-3 rounded text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-700 font-bold shadow-sm border border-gray-100 dark:border-gray-600 transition-colors">🏠 Trang chủ</a>
+                <a href="#courses" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">📚 Khóa học</a>
+                <a href="#services" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">🔧 Dịch vụ</a>
+                <a href="#teachers" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">👨‍🏫 Giáo viên</a>
+                <a href="#blog" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">✍️ Blog</a>
+                <a href="#contact" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">📧 Liên hệ</a>
             </nav>
         </aside>
 
-        <main class="ml-64 flex-1 px-10 py-12">
+        <main class="ml-64 flex-1 px-10 py-12 bg-white dark:bg-gray-900 min-h-[calc(100vh-4rem)] transition-colors duration-300">
             <section id="home" class="mb-12">
-                <h1 class="text-4xl font-bold text-gray-800 mb-4">Xin chào bạn đến với HOURSKILLS!</h1>
+                <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-4 transition-colors">Xin chào bạn đến với HOURSKILLS!</h1>
                 
                 {% if request.user.is_authenticated %}
-                <div class="bg-blue-100 border-l-4 border-blue-500 p-4 mb-6 inline-block rounded-r-lg">
-                    <p class="text-blue-700 font-medium">
-                        💰 Ví của bạn: <span class="font-bold text-blue-900">{{ request.user.wallet.balance_tc }} TC</span>
+                <div class="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 p-4 mb-6 inline-block rounded-r-lg transition-colors">
+                    <p class="text-blue-700 dark:text-blue-300 font-medium">
+                        💰 Ví của bạn: <span class="font-bold text-blue-900 dark:text-blue-400">{{ request.user.wallet.balance_tc|default:"0" }} TC</span>
                     </p>
                 </div>
                 {% endif %}
                 
-                <p class="text-lg text-gray-600 leading-relaxed">Nền tảng học trực tuyến hàng đầu dành cho sinh viên FTU và các bạn trẻ đam mê công nghệ.</p>
+                <p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed transition-colors">Nền tảng học trực tuyến hàng đầu dành cho sinh viên FTU và các bạn trẻ đam mê công nghệ.</p>
             </section>
 
             <section id="courses" class="mb-16">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2 transition-colors">
                     <span class="w-2 h-8 bg-blue-500 rounded"></span> Khóa học nổi bật
                 </h2>
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                        <h3 class="text-xl font-bold text-gray-800 mb-2">Lập trình Web cơ bản</h3>
-                        <p class="text-gray-600 mb-4">Nắm vững HTML, CSS và JavaScript để xây dựng website.</p>
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Xem chi tiết</button>
+                    <div class="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Lập trình Web cơ bản</h3>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4">Nắm vững HTML, CSS và JavaScript để xây dựng website.</p>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Xem chi tiết</button>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                        <h3 class="text-xl font-bold text-gray-800 mb-2">Python & Django</h3>
-                        <p class="text-gray-600 mb-4">Học cách xây dựng hệ thống quản lý chuyên nghiệp.</p>
-                        <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">Xem chi tiết</button>
+                    <div class="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Python & Django</h3>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4">Học cách xây dựng hệ thống quản lý chuyên nghiệp.</p>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Xem chi tiết</button>
                     </div>
                 </div>
             </section>
-
-            </main>
+        </main>
     </div>
 
-    <footer class="bg-gray-800 text-white py-8 ml-64 border-t border-gray-700">
-        <div class="max-w-7xl mx-auto px-6 text-center text-gray-400">
+    <footer class="bg-gray-800 dark:bg-gray-950 text-white py-8 ml-64 border-t border-gray-700 dark:border-gray-800 mt-auto z-10 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-6 text-center text-gray-400 dark:text-gray-500">
             <p>&copy; 2026 HOURSKILLS. Project by Diệp, Nhân, Trọng, Quỳnh Anh.</p>
         </div>
     </footer>
 
     <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const isUserLoggedIn = "{{ request.user.is_authenticated|yesno:'true,false' }}" === "true";
-        const userMenu = document.getElementById("user-menu");
+        // Lấy các element cần thiết
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const htmlRoot = document.getElementById('html-root');
 
-        if (isUserLoggedIn && userMenu) {
-            const username = "{{ request.user.username }}";
-            const profileUrl = "/update-profile/"; 
-            const defaultAvatar = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>`;
-
-            userMenu.innerHTML = `
-                <div class="flex items-center gap-3 bg-gray-700 pr-1 pl-3 py-1 rounded-full border border-gray-600">
-                    <span class="text-sm font-medium text-gray-200">Chào, <strong>${username}</strong></span>
-                    <a href="${profileUrl}" class="w-8 h-8 rounded-full bg-white overflow-hidden border-2 border-blue-400">
-                        <img src="${defaultAvatar}" alt="Avatar" class="w-full h-full object-cover">
-                    </a>
-                </div>
-                <button onclick="logout()" class="h-10 px-4 bg-red-500 text-white rounded hover:bg-red-600 transition text-sm font-bold">
-                    Đăng xuất
-                </button>
-            `;
-        }
-    });
-
-    async function logout() {
-        if(!confirm("Bạn có chắc chắn muốn đăng xuất?")) return;
-        try {
-            const res = await fetch("/api/logout/", {
-                method: "POST",
-                headers: { "X-CSRFToken": getCookie("csrftoken") }
-            });
-            if (res.ok) window.location.reload();
-        } catch (error) {
-            console.error("Lỗi đăng xuất:", error);
-        }
-    }
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+        // Hàm kiểm tra và set icon tương ứng khi load trang
+        function initTheme() {
+            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                htmlRoot.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden'); // Đang tối thì hiện icon mặt trời để sang sáng
+            } else {
+                htmlRoot.classList.remove('dark');
+                themeToggleDarkIcon.classList.remove('hidden'); // Đang sáng thì hiện icon mặt trăng để sang tối
             }
         }
-        return cookieValue;
-    }
+
+        // Chạy hàm khởi tạo theme
+        initTheme();
+
+        // Xử lý sự kiện click nút chuyển đổi
+        themeToggleBtn.addEventListener('click', function() {
+            // Đảo trạng thái icon
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            // Nếu đang lưu là light (hoặc chưa lưu gì mà hệ thống đang light)
+            if (localStorage.getItem('color-theme') === 'light') {
+                htmlRoot.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+            } else if (localStorage.getItem('color-theme') === 'dark') {
+                htmlRoot.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+            } else {
+                // Nếu chưa từng lưu vào localStorage
+                if (document.documentElement.classList.contains('dark')) {
+                    htmlRoot.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    htmlRoot.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
     </script>
 </body>
 </html>
