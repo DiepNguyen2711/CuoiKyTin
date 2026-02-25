@@ -1,11 +1,12 @@
 import json
+from django.core.files.storage import FileSystemStorage
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from hourskill_app.models import User, Wallet
 from django.http import JsonResponse # Dùng nếu muốn trả về API thay vì giao diện
-from .models import WatchSession
+from .models import WatchSession, User, Category, Course, Follow
 
 # 1. Hàm xử lý Đăng ký
 def register_view(request):
@@ -97,6 +98,7 @@ def main_view(request):
         # Nếu chưa đăng nhập mà đòi vào main thì "đuổi" về trang login
         from django.shortcuts import redirect
         return redirect('login')
+
 # Đăng xuất:
 def user_logout(request):
     logout(request) # Lệnh này sẽ xóa phiên đăng nhập hiện tại
@@ -121,3 +123,92 @@ def ping_watch_session(request):
             return JsonResponse({'status': 'success', 'watched_seconds': session.watched_seconds})
         except WatchSession.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Session not found'}, status=404)
+        
+# API Upload Video
+@csrf_exempt
+def api_upload_video(request):
+    if request.method == 'POST':
+        # 'video_file' là tên cái key mà Frontend sẽ gửi lên
+        if request.FILES.get('video_file'):
+            video = request.FILES['video_file']
+            
+            # Khởi tạo công cụ lưu file
+            fs = FileSystemStorage()
+            
+            # Lưu file vào thư mục media/videos/
+            filename = fs.save(f"videos/{video.name}", video)
+            
+            # Lấy đường dẫn URL của file vừa lưu để trả về cho Frontend
+            video_url = fs.url(filename)
+            
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Upload video thành công!',
+                'video_url': video_url
+            }, status=201)
+            
+        return JsonResponse({'status': 'error', 'message': 'Không tìm thấy file video đính kèm!'}, status=400)
+    
+    return JsonResponse({'status': 'error', 'message': 'Chỉ chấp nhận phương thức POST'}, status=405)
+
+# API lấy danh sách khóa học và danh mục
+def api_get_courses(request):
+    if request.method == 'GET':
+        # Lấy danh sách category
+        categories = list(Category.objects.values('id', 'name'))
+        
+        # Lấy danh sách course (chỉ lấy các course đang active, chống lỗi khi đã xóa mềm)
+        courses = list(Course.objects.filter(is_active=True).values(
+            'id', 
+            'title', 
+            'bundle_price_tc', # Lấy đúng tên biến giá TC của bạn
+            'category__name', 
+            'instructor__username' # Lấy tên của Creator tạo khóa học
+        ))
+        
+        return JsonResponse({
+            'status': 'success',
+            'categories': categories,
+            'courses': courses
+        }, status=200)
+    
+# API Follow / Unfollow Creator:
+@csrf_exempt
+def api_toggle_follow(request):
+    if request.method == 'POST':
+        # Bắt buộc phải đăng nhập mới được follow
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Vui lòng đăng nhập!'}, status=401)
+            
+        try:
+            data = json.loads(request.body)
+            creator_id = data.get('creator_id')
+            
+            creator = User.objects.get(id=creator_id)
+            
+            # Chống trò gian lận: Tự follow chính mình
+            if request.user == creator:
+                return JsonResponse({'status': 'error', 'message': 'Bạn không thể tự follow chính mình!'}, status=400)
+            
+            # Tìm xem đã có bản ghi Follow nào giữa 2 người này chưa
+            follow_record = Follow.objects.filter(follower=request.user, following=creator).first()
+            
+            if follow_record:
+                # Nếu tìm thấy -> Đã follow rồi -> Xóa đi (Unfollow)
+                follow_record.delete()
+                action = 'unfollowed'
+            else:
+                # Nếu chưa có -> Tạo bản ghi mới (Follow)
+                Follow.objects.create(follower=request.user, following=creator)
+                action = 'followed'
+                
+            return JsonResponse({'status': 'success', 'action': action})
+            
+        except User.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Không tìm thấy Creator này!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'error', 'message': 'Chỉ chấp nhận phương thức POST'}, status=405)
+
+# 
