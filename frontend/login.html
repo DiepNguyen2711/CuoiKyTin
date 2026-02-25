@@ -32,15 +32,14 @@
 
         <div class="auth-input-group">
           <label>Mật khẩu</label>
-          <div class="relative">
-            <input type="password" id="password" style="width: 100%; padding-right: 40px;" placeholder="Nhập mật khẩu" onkeypress="handleEnter(event)" />
-            
-            <span class="eye-icon absolute" style="right: 10px; top: 50%; transform: translateY(-50%);" onclick="togglePassword('password')">
-              <svg id="eye-icon-password" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px;">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.483 8.61 6.746 6.333 10 6.333s6.517 2.277 7.964 5.345a1.012 1.012 0 0 1 0 .644C16.517 15.39 13.254 17.667 10 17.667s-6.517-2.277-7.964-5.345Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          <div class="password-wrapper">
+            <input type="password" id="password" placeholder="Nhập mật khẩu" />
+            <button type="button" class="eye-btn" id="togglePassword">
+              <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
               </svg>
-            </span>
+            </button>
           </div>
         </div>
 
@@ -53,36 +52,36 @@
     </div>
 
     <script>
-      // 1. Hàm ẩn/hiện mật khẩu
-      function togglePassword(inputId) {
-        const input = document.getElementById(inputId);
-        const icon = document.getElementById('eye-icon-' + inputId);
-        if (input.type === "password") {
-          input.type = "text";
-          icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />`;
-        } else {
-          input.type = "password";
-          icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.483 8.61 6.746 6.333 10 6.333s6.517 2.277 7.964 5.345a1.012 1.012 0 0 1 0 .644C16.517 15.39 13.254 17.667 10 17.667s-6.517-2.277-7.964-5.345Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />`;
-        }
-      }
+      // 1. Hiển thị mắt
+      const togglePassword = document.getElementById('togglePassword');
+      const passwordInput = document.getElementById('password');
 
-      // 2. Hàm bắt sự kiện nhấn phím Enter
-      function handleEnter(event) {
-        if (event.key === "Enter") {
-          login(); // Gọi hàm đăng nhập khi nhấn Enter
-        }
-      }
+      togglePassword.addEventListener('click', function () {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        this.style.color = type === 'text' ? '#3b82f6' : '#9ca3af';
+      });
 
-      // 3. Hàm xử lý đăng nhập có hiệu ứng Loading
+      // 2. Nhấn phím Enter trên toàn trang để Đăng nhập
+      document.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+          login();
+        }
+      });
+
+      // 3. Gửi API Đăng nhập kèm hiệu ứng Loading
       async function login() {
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
-        const btn = document.getElementById("loginBtn");
+        const errorText = document.getElementById("error");
+        const loginBtn = document.getElementById("loginBtn");
 
-        // Bật hiệu ứng Loading
-        btn.innerText = "Đang đăng nhập...";
-        btn.disabled = true;
-        btn.classList.add("btn-loading");
+        errorText.innerText = "";
+
+        // Bật trạng thái Loading
+        loginBtn.innerText = "Đang đăng nhập...";
+        loginBtn.disabled = true; // Khóa nút để không bị bấm double
+        loginBtn.style.opacity = "0.7"; // Làm mờ nút đi một chút cho giống hiệu ứng đang xử lý
 
         try {
           const res = await fetch("/api/login/", {
@@ -94,22 +93,37 @@
           const data = await res.json();
 
           if (res.ok) {
-            // Thành công thì nhảy trang (không cần tắt loading vì đằng nào cũng chuyển trang)
             window.location.href = "/main/"; 
+            // Không cần reset nút vì trang sẽ chuyển đi ngay
           } else {
-            // Thất bại thì báo lỗi và trả lại nút như cũ
-            alert(data.message);
-            btn.innerText = "Đăng nhập";
-            btn.disabled = false;
-            btn.classList.remove("btn-loading");
+            errorText.innerText = data.message;
+            // Nếu lỗi, trả lại trạng thái nút ban đầu để người dùng thử lại
+            loginBtn.innerText = "Đăng nhập";
+            loginBtn.disabled = false;
+            loginBtn.style.opacity = "1";
           }
-        } catch (err) {
-          alert("Lỗi kết nối server!");
-          btn.innerText = "Đăng nhập";
-          btn.disabled = false;
-          btn.classList.remove("btn-loading");
+        } catch (error) {
+          errorText.innerText = "Lỗi kết nối mạng, vui lòng thử lại!";
+          loginBtn.innerText = "Đăng nhập";
+          loginBtn.disabled = false;
+          loginBtn.style.opacity = "1";
         }
       }
+    // 4. Mở khóa nút đăng nhập nếu người dùng ấn nút Back quay lại trang này
+      window.addEventListener('pageshow', function (event) {
+        // event.persisted sẽ bằng true nếu trang được load ra từ bộ nhớ đệm (cache)
+        if (event.persisted) {
+          const loginBtn = document.getElementById("loginBtn");
+          if (loginBtn) {
+            loginBtn.innerText = "Đăng nhập";
+            loginBtn.disabled = false;
+            loginBtn.style.opacity = "1";
+            
+            // Xóa luôn thông báo lỗi màu đỏ (nếu có) cho giao diện sạch sẽ
+            document.getElementById("error").innerText = ""; 
+          }
+        }
+      });  
     </script>
   </body>
 </html>
