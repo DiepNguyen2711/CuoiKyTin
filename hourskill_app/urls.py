@@ -12,4 +12,7 @@ urlpatterns = [
     path('api/upload-video/', views.api_upload_video, name='api_upload_video'),
     path('api/courses/', views.api_get_courses, name='api_get_courses'),
     path('api/follow/', views.api_toggle_follow, name='api_toggle_follow'),
+    path('api/purchase-video/', views.api_purchase_video, name='api_purchase_video'),
+    path('api/post-comment/', views.api_post_comment, name='api_post_comment'),
+    path('api/notifications/', views.api_get_notifications, name='api_get_notifications'),
 ]
