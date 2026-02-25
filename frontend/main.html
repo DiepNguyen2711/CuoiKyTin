@@ -35,25 +35,33 @@
             </div>
 
             <!-- User Menu -->
-            <div class="flex gap-3" id="userMenu">
-                <a href="login.html" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Đăng nhập</a>
-                <a href="register.html" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition">Đăng ký</a>
+<div class="flex gap-3 ml-auto justify-end items-center" id="userMenu">
+    {% if request.user.is_authenticated %}
+        
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid white;">
+                <svg style="width: 24px; height: 24px; color: #6b7280; margin-top: 5px;" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                </svg>
             </div>
-            
-            <span class="text-white font-medium mr-2">{{ request.user.username }}</span>
-            
-            <a href="{% url 'logout' %}" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium">
+            <span style="color: white; font-weight: 500;">{{ request.user.username }}</span>
+            <a href="{% url 'logout' %}" style="padding: 6px 12px; background-color: #ef4444; color: white; font-size: 14px; border-radius: 4px; font-weight: 500; text-decoration: none;">
                 Đăng xuất
             </a>
         </div>
+
     {% else %}
-        <a href="{% url 'login' %}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition font-medium">
+        
+        <a href="{% url 'login' %}" style="padding: 8px 16px; background-color: #3b82f6; color: white; border-radius: 4px; font-weight: 500; text-decoration: none;">
             Đăng nhập
         </a>
-        <a href="{% url 'register' %}" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition font-medium">
+        <a href="{% url 'register' %}" style="padding: 8px 16px; background-color: #22c55e; color: white; border-radius: 4px; font-weight: 500; text-decoration: none;">
             Đăng ký
         </a>
+
     {% endif %}
+</div>
+</div>
 </div>
     </header>
 
