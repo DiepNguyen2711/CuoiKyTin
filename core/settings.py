@@ -117,23 +117,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
-
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
 AUTH_USER_MODEL = 'hourskill_app.User'
-=======
->>>>>>> Stashed changes
+
 STATICFILES_DIRS = [
     BASE_DIR / 'frontend',
 ]
 
-<<<<<<< Updated upstream
-AUTH_USER_MODEL = 'hourskill_app.User'
-=======
-AUTH_USER_MODEL = 'hourskill_app.User'
-
 CORS_ALLOW_ALL_ORIGINS = True
->>>>>>> Stashed changes
->>>>>>> Stashed changes
