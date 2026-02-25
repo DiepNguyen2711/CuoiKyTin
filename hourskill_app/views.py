@@ -42,17 +42,31 @@ def login_view(request):
 def api_register(request):
     if request.method == 'POST':
         try:
-            # 1. Đọc dữ liệu JSON từ Frontend gửi lên
+            # Đọc dữ liệu JSON từ Frontend gửi lên
             data = json.loads(request.body)
-            username = data.get('username')
-            email = data.get('email')
-            password = data.get('password')
+            
+            # Gắn giá trị mặc định là '' và dùng .strip() để xóa khoảng trắng thừa
+            username = data.get('username', '').strip()
+            email = data.get('email', '').strip()
+            password = data.get('password', '')
 
-            # 2. Kiểm tra xem username đã tồn tại chưa
+            # Chống Frontend gửi thiếu dữ liệu hoặc gửi chuỗi rỗng
+            if not username or not email or not password:
+                return JsonResponse({'status': 'error', 'message': 'Vui lòng điền đầy đủ tất cả các trường!'}, status=400)
+
+            # Kiểm tra độ dài mật khẩu
+            if len(password) < 8:
+                return JsonResponse({'status': 'error', 'message': 'Mật khẩu phải có ít nhất 8 ký tự!'}, status=400)
+            
+            # Kiểm tra email trùng lặp
+            if User.objects.filter(email=email).exists():
+                return JsonResponse({'status': 'error', 'message': 'Email này đã được sử dụng! Vui lòng chọn email khác.'}, status=400)
+
+            # Kiểm tra Username trùng lặp (Ngăn lỗi IntegrityError của Django)
             if User.objects.filter(username=username).exists():
-                return JsonResponse({'status': 'error', 'message': 'Tên đăng nhập đã tồn tại!'}, status=400)
+                return JsonResponse({'status': 'error', 'message': 'Tên người dùng này đã tồn tại! Vui lòng chọn tên khác.'}, status=400)
 
-            # 3. Tạo User mới (dùng create_user để mật khẩu được mã hóa)
+            # Tạo User mới an toàn
             user = User.objects.create_user(username=username, email=email, password=password)
            
             return JsonResponse({
@@ -63,7 +77,7 @@ def api_register(request):
         except json.JSONDecodeError:
             return JsonResponse({'status': 'error', 'message': 'Dữ liệu không hợp lệ!'}, status=400)
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            return JsonResponse({'status': 'error', 'message': 'Lỗi hệ thống: ' + str(e)}, status=500)
 
     return JsonResponse({'status': 'error', 'message': 'Chỉ chấp nhận POST!'}, status=405)
 
@@ -73,25 +87,31 @@ def api_login(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            email = data.get('email')
-            password = data.get('password')
+            # Dùng .strip() để tự động cắt bỏ các dấu cách thừa nếu người dùng lỡ tay gõ vào
+            email = data.get('email', '').strip() 
+            password = data.get('password', '')
 
-            from django.contrib.auth import authenticate, login as auth_login
-            from hourskill_app.models import User
-            
-            # Tìm User theo email và xác thực
-            user_obj = User.objects.get(email=email)
+            # Tìm User an toàn: Dùng filter().first() thay vì get() để tránh lỗi văng hệ thống
+            user_obj = User.objects.filter(email=email).first()
+
+            if not user_obj:
+                # Nếu không tìm thấy ai có email này
+                return JsonResponse({'status': 'error', 'message': 'Email chưa đăng ký!'}, status=400)
+
+            # Xác thực mật khẩu
             user = authenticate(request, username=user_obj.username, password=password)
-            
+
             if user is not None:
-                auth_login(request, user)
+                login(request, user)
                 return JsonResponse({'status': 'success'}, status=200)
             else:
-                return JsonResponse({'status': 'error', 'message': 'Sai mật khẩu!'}, status=400)
-        except User.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Email chưa đăng ký!'}, status=400)
+                # Tìm thấy email nhưng sai mật khẩu
+                return JsonResponse({'status': 'error', 'message': 'Sai mật khẩu! Vui lòng kiểm tra lại.'}, status=400)
+
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            # Chỉ báo lỗi 500 cho các lỗi hệ thống nghiêm trọng khác
+            return JsonResponse({'status': 'error', 'message': 'Lỗi máy chủ: ' + str(e)}, status=500)
+            
     return JsonResponse({'status': 'error', 'message': 'Chỉ dùng POST'}, status=405)
 
 def main_view(request):
