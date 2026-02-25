@@ -7,110 +7,69 @@
     <title>Đăng ký - HourSkill</title>
     <link rel="stylesheet" href="{% static 'tailwind.css' %}" />
     <style>
-        /* Tiêu diệt con mắt mặc định của trình duyệt Edge/IE để dùng icon custom */
+        /* Ẩn con mắt mặc định của trình duyệt Edge/IE */
         input[type="password"]::-ms-reveal,
         input[type="password"]::-ms-clear {
             display: none;
         }
     </style>
 </head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen">
-    
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md my-8">
-        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Tạo tài khoản mới</h2>
-        
-        <div id="error" class="text-red-500 text-sm text-center mb-4 font-medium"></div>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <h2>Đăng ký tài khoản mới</h2>
+            
+            <div id="error" class="auth-error"></div>
 
-        <form id="registerForm">
-            <div class="mb-5">
-                <label for="username" class="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Tên đăng nhập
-                </label>
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                        👤
-                    </span>
-                    <input type="text" 
-                           id="username" 
-                           name="username" 
-                           placeholder="Nhập username của bạn" 
-                           class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
-                           required>
+            <form id="registerForm">
+                <div class="auth-input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Nhập username của bạn" required>
                 </div>
-            </div>
 
-            <div class="mb-5">
-                <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Email
-                </label>
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                        📧
-                    </span>
-                    <input type="email" 
-                           id="email" 
-                           name="email" 
-                           placeholder="email@example.com" 
-                           class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
-                           required>
+                <div class="auth-input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="example@gmail.com" required>
                 </div>
-            </div>
 
-            <div class="mb-5">
-                <label for="password" class="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Mật khẩu
-                </label>
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                        🔒
-                    </span>
-                    <input type="password" 
-                           id="password" 
-                           placeholder="Ít nhất 8 ký tự" 
-                           class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
-                           required />
-                    <button type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-blue-500 transition" onclick="togglePassword('password', this)">
-                        <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                    </button>
+                <div class="auth-input-group">
+                    <label for="password">Mật khẩu</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" placeholder="Ít nhất 8 ký tự" required />
+                        <button type="button" class="eye-btn" onclick="togglePassword('password', this)">
+                            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="mb-6">
-                <label for="confirmPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Xác nhận mật khẩu
-                </label>
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                        🔒
-                    </span>
-                    <input type="password" 
-                           id="confirmPassword" 
-                           placeholder="Nhập lại mật khẩu" 
-                           class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
-                           required />
-                    <button type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-blue-500 transition" onclick="togglePassword('confirmPassword', this)">
-                        <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                    </button>
+                <div class="auth-input-group">
+                    <label for="confirmPassword">Xác nhận mật khẩu</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="confirmPassword" placeholder="Nhập lại mật khẩu" required />
+                        <button type="button" class="eye-btn" onclick="togglePassword('confirmPassword', this)">
+                            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <button type="button" onclick="register()" id="registerBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow-md mt-6">
-                Đăng ký
-            </button>
-            <p class="text-center text-sm text-gray-600 mt-5">
-                Đã có tài khoản? <a href="/login/" class="text-blue-600 font-semibold hover:underline transition">Đăng nhập</a>
-            </p>
-        </form>
+                <button type="button" onclick="register()" id="registerBtn" class="auth-button" style="margin-top: 10px;">
+                    Đăng ký
+                </button>
+                
+                <div class="auth-footer">
+                    Đã có tài khoản? <a href="/login/">Đăng nhập</a>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
-        // Hàm lấy CSRF token từ Cookie (Bắt buộc cho Django POST request)
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -126,20 +85,18 @@
             return cookieValue;
         }
 
-        // 1. Xử lý nút ẩn/hiện mật khẩu
         function togglePassword(inputId, btn) {
             const input = document.getElementById(inputId);
             const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
             input.setAttribute('type', type);
             
             if (type === 'text') {
-                btn.style.color = '#3b82f6'; // Chuyển màu xanh khi hiện mật khẩu
+                btn.style.color = '#3b82f6'; 
             } else {
-                btn.style.color = '#9ca3af'; // Trở về màu xám khi ẩn
+                btn.style.color = '#9ca3af'; 
             }
         }
 
-        // 2. Hàm Gửi API Đăng ký
         async function register() {
             const username = document.getElementById("username").value.trim();
             const email = document.getElementById("email").value.trim();
@@ -150,7 +107,6 @@
 
             errorText.innerText = "";
 
-            // Validate đầy đủ thông tin (đã thêm email)
             if (!username || !email || !password || !confirmPassword) {
                 errorText.innerText = "Vui lòng nhập đầy đủ thông tin!";
                 return;
@@ -166,7 +122,6 @@
                 return;
             }
 
-            // Bật trạng thái Loading
             registerBtn.innerText = "Đang xử lý...";
             registerBtn.disabled = true;
             registerBtn.style.opacity = "0.7";
@@ -176,7 +131,7 @@
                     method: "POST",
                     headers: { 
                         "Content-Type": "application/json",
-                        "X-CSRFToken": getCookie("csrftoken") // Đính kèm token bảo mật
+                        "X-CSRFToken": getCookie("csrftoken")
                     },
                     body: JSON.stringify({ username, email, password }),
                 });
