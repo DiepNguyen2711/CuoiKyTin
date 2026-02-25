@@ -1,12 +1,13 @@
 import json
+from django.http import JsonResponse # Dùng nếu muốn trả về API thay vì giao diện
 from django.core.files.storage import FileSystemStorage
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from hourskill_app.models import User, Wallet
-from django.http import JsonResponse # Dùng nếu muốn trả về API thay vì giao diện
-from .models import WatchSession, User, Category, Course, Follow
+from django.db import transaction
+from .models import WatchSession, User, Category, Course, Follow, Video, Transaction, CommentReview, Notification
 
 # 1. Hàm xử lý Đăng ký
 def register_view(request):
@@ -211,4 +212,125 @@ def api_toggle_follow(request):
             
     return JsonResponse({'status': 'error', 'message': 'Chỉ chấp nhận phương thức POST'}, status=405)
 
+# API Mua Video (Trừ tiền, Cộng tiền, Ghi Sổ cái)
+@csrf_exempt
+def api_purchase_video(request):
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Vui lòng đăng nhập!'}, status=401)
+            
+        try:
+            data = json.loads(request.body)
+            video_id = data.get('video_id')
+            video = Video.objects.get(id=video_id)
+            
+            # Kiểm tra xem User đã mở khóa video này chưa
+            session, created = WatchSession.objects.get_or_create(user=request.user, video=video)
+            if session.is_unlocked:
+                return JsonResponse({'status': 'error', 'message': 'Bạn đã mua video này rồi!'}, status=400)
+
+            # BẮT ĐẦU GIAO DỊCH TÀI CHÍNH (Đảm bảo ACID)
+            with transaction.atomic():
+                user_wallet = request.user.wallet
+                creator_wallet = video.creator.wallet
+                price = video.price_tc
+                
+                # 1. Kiểm tra số dư ví
+                if user_wallet.balance_tc < price:
+                    return JsonResponse({'status': 'error', 'message': 'Số dư TC không đủ. Vui lòng nạp thêm!'}, status=400)
+                
+                # 2. Trừ tiền User & Cộng tiền Creator
+                user_wallet.balance_tc -= price
+                creator_wallet.balance_tc += price
+                
+                user_wallet.save()
+                creator_wallet.save()
+                
+                # 3. Ghi Sổ cái Transaction
+                Transaction.objects.create(
+                    sender=request.user,
+                    receiver=video.creator,
+                    tx_type='SPEND_VIEW',
+                    amount_tc=price,
+                    reference_video=video,
+                    status='SUCCESS'
+                )
+                
+                # 4. Đánh dấu đã mở khóa video
+                session.is_unlocked = True
+                session.save()
+                
+            return JsonResponse({'status': 'success', 'message': 'Mua video thành công!', 'remaining_tc': user_wallet.balance_tc})
+            
+        except Video.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Video không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'error', 'message': 'Chỉ chấp nhận POST'}, status=405)
+
+# API Đăng Bình luận & Đánh giá (Review)
+@csrf_exempt
+def api_post_comment(request):
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Vui lòng đăng nhập!'}, status=401)
+            
+        try:
+            data = json.loads(request.body)
+            video_id = data.get('video_id')
+            content = data.get('content')
+            rating = data.get('rating') # Có thể null
+            
+            video = Video.objects.get(id=video_id)
+            
+            # Tạo bình luận
+            CommentReview.objects.create(
+                user=request.user,
+                video=video,
+                content=content,
+                rating=rating
+            )
+            
+            # Gửi thông báo cho Creator
+            if request.user != video.creator:
+                Notification.objects.create(
+                    user=video.creator,
+                    content=f"🗣️ {request.user.username} đã bình luận về video '{video.title}' của bạn."
+                )
+                
+            return JsonResponse({'status': 'success', 'message': 'Đã gửi bình luận!'})
+            
+        except Video.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Video không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'error', 'message': 'Chỉ chấp nhận POST'}, status=405)
+
+# API Lấy danh sách Thông báo (Notification)
+def api_get_notifications(request):
+    if request.method == 'GET':
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Vui lòng đăng nhập!'}, status=401)
+            
+        # Lấy 20 thông báo mới nhất của user đang đăng nhập
+        notifs = Notification.objects.filter(user=request.user).order_by('-created_at')[:20]
+        
+        data = [{
+            'id': n.id,
+            'content': n.content,
+            'is_read': n.is_read,
+            'created_at': n.created_at.strftime("%H:%M %d/%m/%Y")
+        } for n in notifs]
+        
+        # Đếm số thông báo chưa đọc để hiển thị số đỏ trên quả chuông
+        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        
+        return JsonResponse({
+            'status': 'success', 
+            'notifications': data,
+            'unread_count': unread_count
+        }, status=200)
+    
 # 
