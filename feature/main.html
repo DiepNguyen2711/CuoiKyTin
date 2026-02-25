@@ -34,7 +34,7 @@
             </div>
 
             <!-- User Menu -->
-            <div class="flex gap-3">
+            <div class="flex gap-3" id="userMenu">
                 <a href="login.html" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Đăng nhập</a>
                 <a href="register.html" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition">Đăng ký</a>
             </div>
@@ -243,23 +243,30 @@
             <p>&copy; 2026 HOURSKILLS. Bảo lưu mọi quyền.</p>
         </div>
     </footer>
-    
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-        const token = localStorage.getItem("token");
-        const userMenu = document.querySelector(".flex.gap-3");
 
-        if (token) {
+    <script>
+        function parseJwt(token) {
+            return JSON.parse(atob(token.split('.')[1]));
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const token = localStorage.getItem("token");
+            const userMenu = document.getElementById("userMenu");
+
+            if (token) {
+                const user = parseJwt(token);
+
             userMenu.innerHTML = `
-            <span class="px-4 py-2 bg-gray-200 text-gray-800 rounded">
-                👋 Xin chào!
-            </span>
+            <div class="user-menu">
+                <img src="${user.avatar}" class="user-avatar">
+                <span class="user-name">${user.fullName}</span>
+            </div>
             <button onclick="logout()" 
                 class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
                 Logout
             </button>
             `;
-        }
+            }
         });
 
         function logout() {

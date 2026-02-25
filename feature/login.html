@@ -44,6 +44,7 @@
 
     if (res.ok) {
       localStorage.setItem("token", data.token);
+      localStorage.setItem("email", email);
       window.location.href = "/";
     } else {
       alert(data.message);
