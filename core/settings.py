@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -126,3 +127,10 @@ STATICFILES_DIRS = [
 AUTH_USER_MODEL = 'hourskill_app.User'
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Đường dẫn URL để truy cập file trên web (ví dụ: localhost:8000/media/video.mp4)
+MEDIA_URL = '/media/'
+
+# Thư mục vật lý trên máy tính để lưu file
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
