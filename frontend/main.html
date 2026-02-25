@@ -35,26 +35,16 @@
             </div>
 
             <!-- User Menu -->
-<<<<<<< Updated upstream
-        <div class="flex gap-3 ml-auto justify-end items-center">
-    {% if request.user.is_authenticated %}
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
-                <svg class="w-6 h-6 text-gray-500 mt-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-=======
-           <div class="flex gap-3 ml-auto justify-end items-center" id="userMenu">
+<div class="flex gap-3 ml-auto justify-end items-center" id="userMenu">
     {% if request.user.is_authenticated %}
         
         <div style="display: flex; align-items: center; gap: 12px;">
-            
             <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid white;">
                 <svg style="width: 24px; height: 24px; color: #6b7280; margin-top: 5px;" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
->>>>>>> Stashed changes
                     <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
                 </svg>
             </div>
             <span style="color: white; font-weight: 500;">{{ request.user.username }}</span>
-            
             <a href="{% url 'logout' %}" style="padding: 6px 12px; background-color: #ef4444; color: white; font-size: 14px; border-radius: 4px; font-weight: 500; text-decoration: none;">
                 Đăng xuất
             </a>
@@ -70,6 +60,7 @@
         </a>
 
     {% endif %}
+</div>
 </div>
 </div>
     </header>
@@ -278,23 +269,30 @@
             <p>&copy; 2026 HOURSKILLS. Bảo lưu mọi quyền.</p>
         </div>
     </footer>
-    
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-        const token = localStorage.getItem("token");
-        const userMenu = document.querySelector(".flex.gap-3");
 
-        if (token) {
+    <script>
+        function parseJwt(token) {
+            return JSON.parse(atob(token.split('.')[1]));
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const token = localStorage.getItem("token");
+            const userMenu = document.getElementById("userMenu");
+
+            if (token) {
+                const user = parseJwt(token);
+
             userMenu.innerHTML = `
-            <span class="px-4 py-2 bg-gray-200 text-gray-800 rounded">
-                👋 Xin chào!
-            </span>
+            <div class="user-menu">
+                <img src="${user.avatar}" class="user-avatar">
+                <span class="user-name">${user.fullName}</span>
+            </div>
             <button onclick="logout()" 
                 class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
                 Logout
             </button>
             `;
-        }
+            }
         });
 
         function logout() {
