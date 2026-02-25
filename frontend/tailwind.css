@@ -314,6 +314,55 @@ footer a:hover { color: var(--color-blue-300); }
 .auth-error { color: red; font-size: 13px; margin-bottom: 12px; text-align: center; }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to { opacity: 1; transform: translateY(0); }
+/* HIỆU ỨNG XUẤT HIỆN (FADE IN UP) */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Áp dụng hiệu ứng cho các thẻ card hoặc form */
+.auth-card, .course-card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* USER MENU TRÊN HEADER */
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.1); /* Tạo nền mờ nhẹ cho tên user */
+    border-radius: 50px;
+    transition: 0.3s ease;
+}
+
+.user-menu:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #3b82f6; /* Viền xanh đặc trưng của brand */
+    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Hiệu ứng nảy nhẹ */
+}
+
+.user-avatar:hover {
+    transform: scale(1.15); /* Phóng to nhẹ khi di chuột vào */
+}
+
+.user-name {
+    color: #f3f4f6; /* Màu xám trắng dịu mắt */
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+}
 }

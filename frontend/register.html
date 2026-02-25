@@ -13,16 +13,22 @@
     </style>
   </head>
   <body>
-    <div class="auth-container">
-      <div class="auth-card">
-        <h2>Đăng ký</h2>
-
-        <div id="error" class="auth-error" style="color: red; margin-bottom: 10px;"></div>
-
-        <div class="auth-input-group">
-          <label>Username</label>
-          <input type="text" id="username" placeholder="Nhập Username" />
-        </div>
+  <div class="mb-5">
+    <label for="username" class="block text-sm font-semibold text-gray-700 mb-1.5">
+        Tên đăng nhập
+    </label>
+    <div class="relative">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+            👤
+        </span>
+        <input type="text" 
+               id="username" 
+               name="username" 
+               placeholder="Nhập username của bạn" 
+               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
+               required>
+    </div>
+</div>
 
         <div class="auth-input-group">
           <label>Email</label>
