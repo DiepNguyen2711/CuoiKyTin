@@ -1,56 +1,145 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-  <title>Đăng nhập</title>
-  <link rel="stylesheet" href="tailwind.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng nhập - HourSkill</title>
+  <link rel="stylesheet" href="{% static 'tailwind.css' %}">
+  <style>
+    /* Tiêu diệt con mắt mặc định của trình duyệt Edge/IE */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <div class="auth-container">
     <div class="auth-card">
       <h2>Đăng nhập</h2>
 
-      <div class="auth-error" id="error"></div>
+      <div class="auth-error text-red-500 mb-3 text-sm text-center" id="error"></div>
 
       <div class="auth-input-group">
-        <label>Email</label>
-        <input type="email" id="email" placeholder="email@example.com">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="email@example.com" required>
       </div>
 
       <div class="auth-input-group">
-        <label>Mật khẩu</label>
-        <input type="password" id="password" placeholder="Nhập mật khẩu">
+        <label for="password">Mật khẩu</label>
+        <div class="password-wrapper relative">
+          <input type="password" id="password" placeholder="Nhập mật khẩu" required />
+          <button type="button" class="eye-btn absolute right-2 top-2" id="togglePassword">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <button class="auth-button" onclick="login()">Đăng nhập</button>
+      <button id="loginBtn" class="auth-button" onclick="login()">Đăng nhập</button>
 
-      <div class="auth-footer">
-        Chưa có tài khoản? <a href="register.html">Đăng ký</a>
+      <div class="auth-footer mt-4 text-center">
+        Chưa có tài khoản? <a href="/register/" class="text-blue-500 hover:underline">Đăng ký</a>
       </div>
     </div>
   </div>
 
   <script>
-  async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    // Hàm lấy CSRF token từ Cookie (Bắt buộc cho Django)
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
 
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+    // 1. Hiển thị mắt
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    togglePassword.addEventListener('click', function () {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      this.style.color = type === 'text' ? '#3b82f6' : '#9ca3af';
     });
 
-    const data = await res.json();
+    // 2. Nhấn phím Enter trên toàn trang để Đăng nhập
+    document.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        login();
+      }
+    });
 
-    if (res.ok) {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("email", email);
-      window.location.href = "/";
-    } else {
-      alert(data.message);
+    // 3. Gửi API Đăng nhập kèm hiệu ứng Loading
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const errorText = document.getElementById("error");
+      const loginBtn = document.getElementById("loginBtn");
+
+      errorText.innerText = "";
+
+      if (!email || !password) {
+        errorText.innerText = "Vui lòng nhập đầy đủ Email và Mật khẩu!";
+        return;
+      }
+
+      // Bật trạng thái Loading
+      loginBtn.innerText = "Đang đăng nhập...";
+      loginBtn.disabled = true;
+      loginBtn.style.opacity = "0.7"; 
+
+      try {
+        const res = await fetch("/api/login/", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken") // Đã thêm Token bảo mật
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          window.location.href = "/main/"; 
+        } else {
+          errorText.innerText = data.message || "Sai thông tin đăng nhập!";
+          loginBtn.innerText = "Đăng nhập";
+          loginBtn.disabled = false;
+          loginBtn.style.opacity = "1";
+        }
+      } catch (error) {
+        errorText.innerText = "Lỗi kết nối mạng, vui lòng thử lại!";
+        loginBtn.innerText = "Đăng nhập";
+        loginBtn.disabled = false;
+        loginBtn.style.opacity = "1";
+      }
     }
-  }
-  </script>
 
+    // 4. Mở khóa nút đăng nhập nếu người dùng ấn nút Back
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) {
+        const loginBtn = document.getElementById("loginBtn");
+        if (loginBtn) {
+          loginBtn.innerText = "Đăng nhập";
+          loginBtn.disabled = false;
+          loginBtn.style.opacity = "1";
+          document.getElementById("error").innerText = ""; 
+        }
+      }
+    });  
+  </script>
 </body>
 </html>
