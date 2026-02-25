@@ -145,33 +145,27 @@
         // Chạy hàm khởi tạo theme
         initTheme();
 
-        // Xử lý sự kiện click nút chuyển đổi
-        themeToggleBtn.addEventListener('click', function() {
-            // Đảo trạng thái icon
-            themeToggleDarkIcon.classList.toggle('hidden');
-            themeToggleLightIcon.classList.toggle('hidden');
-
-            // Nếu đang lưu là light (hoặc chưa lưu gì mà hệ thống đang light)
-            if (localStorage.getItem('color-theme') === 'light') {
-                htmlRoot.classList.add('dark');
-                localStorage.setItem('color-theme', 'dark');
-            } else if (localStorage.getItem('color-theme') === 'dark') {
-                htmlRoot.classList.remove('dark');
-                localStorage.setItem('color-theme', 'light');
-            } else {
-                // Nếu chưa từng lưu vào localStorage
-                if (document.documentElement.classList.contains('dark')) {
-                    htmlRoot.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                } else {
-                    htmlRoot.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                }
-            } catch (error) {
-                console.error("Lỗi đăng xuất:", error);
-                alert("Mạng yếu hoặc lỗi máy chủ, vui lòng kiểm tra lại!");
-            }
-        });
+        // Xử lý sự kiện click nút chuyển đổi Dark Mode
+themeToggleBtn.addEventListener('click', function() {
+    // 1. Kiểm tra xem hiện tại đang là Dark hay Light
+    if (htmlRoot.classList.contains('dark')) {
+        // Đang tối -> Chuyển sang sáng
+        htmlRoot.classList.remove('dark');
+        localStorage.setItem('color-theme', 'light');
+        
+        // Cập nhật lại Icon (nếu bạn có dùng icon mặt trời/mặt trăng)
+        themeToggleDarkIcon.classList.remove('hidden');
+        themeToggleLightIcon.classList.add('hidden');
+    } else {
+        // Đang sáng -> Chuyển sang tối
+        htmlRoot.classList.add('dark');
+        localStorage.setItem('color-theme', 'dark');
+        
+        // Cập nhật lại Icon
+        themeToggleDarkIcon.classList.add('hidden');
+        themeToggleLightIcon.classList.remove('hidden');
+    }
+}); 
     </script>
 </body>
 </html>
