@@ -1,5 +1,6 @@
 import json
 from django.http import JsonResponse # Dùng nếu muốn trả về API thay vì giao diện
+from decimal import Decimal
 from django.core.files.storage import FileSystemStorage
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect
@@ -7,7 +8,9 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from hourskill_app.models import User, Wallet
 from django.db import transaction
-from .models import WatchSession, User, Category, Course, Follow, Video, Transaction, CommentReview, Notification
+from .models import WatchSession, User, Category, Course, Follow, Video, Transaction, CommentReview, Notification, UserBehavior
+from datetime import timedelta
+from django.utils import timezone
 
 # 1. Hàm xử lý Đăng ký
 def register_view(request):
@@ -333,4 +336,92 @@ def api_get_notifications(request):
             'unread_count': unread_count
         }, status=200)
     
-# 
+# API Cộng tiền xem Quảng cáo (Kèm chống Spam)
+@csrf_exempt
+def api_reward_ads(request):
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Vui lòng đăng nhập!'}, status=401)
+            
+        try:
+            now = timezone.now()
+            
+            # --- LOGIC CHỐNG SPAM BẢO VỆ NỀN KINH TẾ ---
+            # Tìm giao dịch nhận tiền quảng cáo gần nhất của User này
+            last_ad_tx = Transaction.objects.filter(
+                receiver=request.user, 
+                tx_type='EARN_ADS'
+            ).order_by('-timestamp').first()
+
+            # Nếu khoảng cách giữa 2 lần nhận tiền < 30 giây -> Bắt quả tang gian lận!
+            if last_ad_tx and (now - last_ad_tx.timestamp).total_seconds() < 30:
+                request.user.trust_score -= 5 # Trừ 5 điểm uy tín
+                request.user.save()
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': 'Phát hiện spam! Bạn xem quảng cáo quá nhanh. Bị trừ 5 điểm uy tín.'
+                }, status=429) # 429: Too Many Requests
+
+            # --- LOGIC CỘNG TIỀN (Giao dịch nguyên tử) ---
+            reward_amount = Decimal('0.50') # Giả sử xem 1 quảng cáo được 0.5 TC
+            
+            with transaction.atomic():
+                wallet = request.user.wallet
+                wallet.balance_tc += reward_amount
+                wallet.save()
+                
+                # Ghi vào sổ cái
+                Transaction.objects.create(
+                    receiver=request.user,
+                    tx_type='EARN_ADS',
+                    amount_tc=reward_amount,
+                    status='SUCCESS'
+                )
+                
+            return JsonResponse({
+                'status': 'success', 
+                'message': f'Đã cộng {reward_amount} TC vào ví!',
+                'new_balance': wallet.balance_tc
+            })
+            
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'error', 'message': 'Chỉ chấp nhận POST'}, status=405)
+
+# API Âm thầm ghi nhận UserBehavior
+@csrf_exempt
+def api_log_behavior(request):
+    if request.method == 'POST':
+        # Dù đăng nhập hay chưa (khách vãng lai), ta vẫn có thể log hành vi (nếu gán user=None)
+        user = request.user if request.user.is_authenticated else None
+        
+        try:
+            data = json.loads(request.body)
+            video_id = data.get('video_id')
+            event_type = data.get('event_type') # PLAY, PAUSE, SEEK, COMPLETE, DROP_OFF
+            timestamp_sec = data.get('video_timestamp_seconds', 0)
+            
+            video = Video.objects.get(id=video_id)
+            
+            # Lấy thông tin thiết bị/trình duyệt của người dùng (User-Agent)
+            user_agent = request.META.get('HTTP_USER_AGENT', '')[:150]
+            
+            UserBehavior.objects.create(
+                user=user,
+                video=video,
+                event_type=event_type,
+                video_timestamp_seconds=timestamp_sec,
+                device_info=user_agent
+            )
+            
+            # API này chạy ngầm nên chỉ cần trả về status 200 rất gọn
+            return JsonResponse({'status': 'success'}, status=200)
+            
+        except Video.DoesNotExist:
+            return JsonResponse({'status': 'error'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error'}, status=500)
+            
+    return JsonResponse({'status': 'error'}, status=405)
+
