@@ -48,13 +48,14 @@ class Wallet(models.Model):
 # 3. HỆ THỐNG NỘI DUNG (VIDEO)
 # ==========================================
 class Video(models.Model):
+    # Thêm Index cho trường title và category để tìm kiếm siêu tốc (milliseconds)
+    title = models.CharField(max_length=255, db_index=True) 
+
     """Lưu trữ thông tin về các khóa học/video"""
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='videos')
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    
-    # ĐÂY LÀ DÒNG BẠN CẦN THÊM VÀO:
+    course = models.ForeignKey('Course', on_delete=models.CASCADE, related_name='videos', null=True, blank=True)
     category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='videos')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_videos')
+    description = models.TextField(blank=True)
     
     # Đường dẫn file (nên thiết lập Upload vào folder 'videos/')
     file_url = models.FileField(upload_to='videos/') 
@@ -69,7 +70,14 @@ class Video(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.title
+        return self.title  
+    # Thêm cờ Xóa mềm (Soft Delete)
+    is_active = models.BooleanField(default=True)
+
+    # (Tùy chọn) Ghi đè hàm delete mặc định để biến thành Xóa mềm
+    def delete(self, *args, **kwargs):
+        self.is_active = False
+        self.save()
 
 # ==========================================
 # 4. NHẬT KÝ GIAO DỊCH (LEDGER/TRANSACTIONS) - GHI ĐIỂM "SYSTEM THINKING"
@@ -149,24 +157,27 @@ class Category(models.Model):
 
 class Course(models.Model):
     """
-    Tập hợp nhiều Video thành một lộ trình có cấu trúc.
+    Tập hợp nhiều Video thành một lộ trình có cấu trúc do Creator tự thiết kế.
     """
-    title = models.CharField(max_length=255, verbose_name="Tên khóa học")
+    title = models.CharField(max_length=255, verbose_name="Tên khóa học", db_index=True)
     description = models.TextField(verbose_name="Mô tả chi tiết")
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='courses')
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='courses')
+    # Instructor chính là Creator sở hữu khóa học này
     instructor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='taught_courses')
     
-    # Liên kết nhiều-nhiều với Video. 
-    # Mở rộng model Video hiện tại để nó có thể thuộc về một hoặc nhiều Course.
-    videos = models.ManyToManyField(Video, related_name='courses', blank=True) 
+    # ĐÃ XÓA dòng videos (ManyToManyField) ở đây để chuyển sang quan hệ 1-N
     
-    # Giá mua đứt cả khóa học (giảm giá so với mua lẻ từng video)
     bundle_price_tc = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Giá trọn bộ (TC)")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
+
+    # Hàm Xóa mềm bảo vệ dữ liệu tài chính
+    def delete(self, *args, **kwargs):
+        self.is_active = False
+        self.save()
 
 
 # ==========================================

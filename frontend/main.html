@@ -167,6 +167,9 @@
                     htmlRoot.classList.add('dark');
                     localStorage.setItem('color-theme', 'dark');
                 }
+            } catch (error) {
+                console.error("Lỗi đăng xuất:", error);
+                alert("Mạng yếu hoặc lỗi máy chủ, vui lòng kiểm tra lại!");
             }
         });
     </script>
