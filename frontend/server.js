@@ -66,7 +66,10 @@ app.post("/api/login", async (req, res) => {
   { 
     id: user.id,
     fullName: user.fullName,
-    avatar: user.avatar
+    avatar: user.avatar,
+    role: user.role,
+    surveyDone: !!user.survey,
+    score: user.score || 0
   }, 
   SECRET_KEY, 
   { expiresIn: "1h" }
@@ -96,7 +99,18 @@ app.post("/api/survey", (req, res) => {
 
   user.survey = answers;
 
-  res.json({ message: "Lưu khảo sát thành công" });
+  // 🔥 AI SCORING LOGIC (simple heuristic)
+  let score = 0;
+
+  answers.forEach(ans => {
+    if (ans.includes("%")) score += 20;
+    if (ans.toLowerCase().includes("quốc tế")) score += 30;
+    if (ans.length > 20) score += 10;
+  });
+
+  user.score = score;
+
+  res.json({ message: "Lưu khảo sát thành công", score });
 });
 
 // ================= ROOT =================

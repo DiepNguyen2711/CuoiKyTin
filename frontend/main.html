@@ -1,11 +1,10 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HOURSKILLS</title>
-    <link rel="stylesheet" href="{% static 'tailwind.css' %}" />
+    <link rel="stylesheet" href="tailwind.css">
 </head>
 <body>
 
@@ -42,6 +41,7 @@
             
             <span class="text-white font-medium mr-2">{{ request.user.username }}</span>
             
+            {% if request.user.is_authenticated %}
             <a href="{% url 'logout' %}" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium">
                 Đăng xuất
             </a>
@@ -55,6 +55,8 @@
         </a>
     {% endif %}
 </div>
+
+        </div>
     </header>
 
     <!-- MAIN CONTENT WITH SIDEBAR -->
@@ -272,8 +274,15 @@
             const userMenu = document.getElementById("userMenu");
 
             if (token) {
-                const user = parseJwt(token);
+            const user = parseJwt(token);
 
+            // 🚨 BẮT BUỘC ONBOARDING
+            if (!user.role || !user.surveyDone) {
+                window.location.href = "onboarding.html";
+                return;
+            }
+
+            // Hiển thị user menu
             userMenu.innerHTML = `
             <div class="user-menu">
                 <img src="${user.avatar}" class="user-avatar">

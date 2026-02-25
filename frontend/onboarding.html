@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Onboarding</title>
+  <link rel="stylesheet" href="tailwind.css">
+</head>
+<body>
+<div class="progress-container">
+  <div id="progressBar" class="progress-bar"></div>
+</div>
+<div class="auth-container">
+  <div class="auth-card">
+    <h2>Bạn là ai?</h2>
+
+    <select id="role" class="auth-input-group">
+      <option value="student">Học sinh / Sinh viên</option>
+      <option value="lecturer">Giảng viên</option>
+      <option value="researcher">Nhà nghiên cứu</option>
+    </select>
+
+    <button class="auth-button" onclick="selectRole()">Tiếp tục</button>
+
+    <div id="userStoryBox" style="margin-top:20px;"></div>
+    <div id="surveyBox"></div>
+  </div>
+</div>
+
+<script>
+
+function selectRole() {
+  const role = document.getElementById("role").value;
+  const email = localStorage.getItem("email");
+  document.getElementById("progressBar").style.width = "40%";
+  fetch("/api/select-role", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, role }),
+  });
+
+  renderUserStory(role);
+  renderSurvey(role);
+}
+
+function renderUserStory(role) {
+  const box = document.getElementById("userStoryBox");
+
+  let story = "";
+
+  if (role === "student") {
+    story = `
+    <p><strong>User Story:</strong><br>
+    Là một học sinh/sinh viên, tôi muốn có một lộ trình học tập cá nhân hóa để có thể tăng thu nhập và cơ hội nghề nghiệp.</p>`;
+  }
+
+  if (role === "lecturer") {
+    story = `
+    <p><strong>User Story:</strong><br>
+    Với tư cách là giảng viên, tôi muốn tạo ra những khóa học có sức ảnh hưởng lớn để thu hút thêm sinh viên và tăng thu nhập.</p>`;
+  }
+
+  box.innerHTML = story;
+}
+
+function renderSurvey(role) {
+  const box = document.getElementById("surveyBox");
+  document.getElementById("progressBar").style.width = "40%";
+  let questions = [];
+
+  if (role === "student") {
+    questions = [
+      "Bạn muốn tăng thu nhập bao nhiêu % sau khóa học?",
+      "Bạn muốn đạt vị trí công việc nào?",
+      "Bạn có cần chứng chỉ quốc tế không?",
+      "Bạn có bao nhiêu giờ/tuần để đầu tư cho việc học?"
+    ];
+  }
+
+  if (role === "lecturer") {
+    questions = [
+      "Bạn muốn tăng bao nhiêu học viên trong 6 tháng?",
+      "Bạn có muốn mở khóa học trả phí không?",
+      "Bạn muốn xây dựng thương hiệu cá nhân mạnh đến mức nào?",
+      "Bạn gặp khó khăn gì khi dạy online?"
+    ];
+  }
+
+  box.innerHTML = "";
+
+  questions.forEach((q, index) => {
+    box.innerHTML += `
+      <div class="auth-input-group">
+        <label>${q}</label>
+        <input type="text" id="q${index}">
+      </div>
+    `;
+  });
+
+  box.innerHTML += `
+    <button class="auth-button" onclick="submitSurvey()">Hoàn tất</button>
+  `;
+}
+
+async function submitSurvey() {
+  const email = localStorage.getItem("email");
+  const inputs = document.querySelectorAll("#surveyBox input");
+  document.getElementById("progressBar").style.width = "100%";
+  let answers = [];
+  inputs.forEach(input => answers.push(input.value));
+
+  await fetch("/api/survey", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, answers }),
+  });
+
+  // 👉 Login lại để lấy token mới
+  const password = prompt("Nhập lại mật khẩu để hoàn tất:");
+  
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json();
+  localStorage.setItem("token", data.token);
+
+  window.location.href = "/";
+}
+
+</script>
+
+</body>
+</html>
