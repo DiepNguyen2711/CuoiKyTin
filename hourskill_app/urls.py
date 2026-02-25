@@ -15,4 +15,6 @@ urlpatterns = [
     path('api/purchase-video/', views.api_purchase_video, name='api_purchase_video'),
     path('api/post-comment/', views.api_post_comment, name='api_post_comment'),
     path('api/notifications/', views.api_get_notifications, name='api_get_notifications'),
+    path('api/reward-ads/', views.api_reward_ads, name='api_reward_ads'),
+    path('api/log-behavior/', views.api_log_behavior, name='api_log_behavior'),
 ]
