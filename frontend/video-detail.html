@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Video Detail</title>
+<link rel="stylesheet" href="tailwind.css">
+</head>
+
+<body>
+
+<div class="max-w-6xl mx-auto mt-8">
+
+  <!-- VIDEO PLAYER -->
+  <div class="bg-black rounded-xl overflow-hidden">
+    <video id="videoPlayer"
+      controls
+      class="w-full h-[500px] object-contain">
+    </video>
+  </div>
+
+  <!-- VIDEO INFO -->
+  <div class="mt-6">
+
+    <h1 id="videoTitle"
+      class="text-2xl font-bold mb-4">
+    </h1>
+
+    <!-- CREATOR -->
+    <div class="flex items-center justify-between">
+
+      <div class="flex items-center gap-4">
+
+        <img id="creatorAvatar"
+          class="w-12 h-12 rounded-full"/>
+
+        <div>
+          <p id="creatorName"
+             class="font-semibold"></p>
+        </div>
+
+      </div>
+
+      <!-- ACTION -->
+      <div class="flex items-center gap-3">
+
+        <!-- 🔔 Notification -->
+        <button id="notifyBtn"
+          class="p-3 rounded-full bg-gray-100 hover:bg-gray-200">
+          🔔
+        </button>
+
+        <!-- FOLLOW -->
+        <button id="followBtn"
+          class="px-5 py-2 bg-blue-500 text-white rounded-full">
+          Follow
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ================= POPUP LOCK ================= -->
+
+<div id="unlockPopup"
+ class="hidden fixed inset-0 bg-black/60
+ flex items-center justify-center">
+
+  <div class="bg-white p-6 rounded-xl w-[350px]">
+
+    <h2 class="text-lg font-bold mb-3">
+      🔒 Video bị khóa
+    </h2>
+
+    <p id="unlockText"
+       class="mb-4 text-gray-600">
+    </p>
+
+    <button onclick="unlockVideo()"
+      class="w-full bg-blue-500 text-white py-2 rounded-lg">
+      Mở khóa
+    </button>
+
+  </div>
+
+</div>
+
+</body>
