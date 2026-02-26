@@ -1,7 +1,5 @@
 from django.db import models
-
-# Create your models here.
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, User
 from django.utils import timezone
 
 # ==========================================
@@ -267,3 +265,16 @@ class UserBehavior(models.Model):
     def __str__(self):
         return f"Log: {self.user.username if self.user else 'Ẩn danh'} - {self.event_type} - {self.video.title}"
 
+# 9. Hệ thống gợi ý video dựa trên role và surver answer
+class UserProfile(models.Model):
+    # Liên kết 1-1 với tài khoản User
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    
+    # Lưu vai trò (student, lecturer, researcher)
+    role = models.CharField(max_length=50, blank=True, null=True)
+    
+    # Dùng JSONField để lưu mảng các câu trả lời cho linh hoạt
+    survey_answers = models.JSONField(default=list, blank=True, null=True) 
+
+    def __str__(self):
+        return f"{self.user.email} - Vai trò: {self.role}"

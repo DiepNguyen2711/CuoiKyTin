@@ -6,9 +6,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.decorators import login_required
 from hourskill_app.models import User, Wallet
 from django.db import transaction
-from .models import WatchSession, User, Category, Course, Follow, Video, Transaction, CommentReview, Notification, UserBehavior
+from .models import WatchSession, User, Category, Course, Follow, Video, Transaction, CommentReview, Notification, UserBehavior, UserProfile
 from datetime import timedelta
 from django.utils import timezone
 
@@ -445,3 +446,51 @@ def api_log_behavior(request):
             
     return JsonResponse({'status': 'error'}, status=405)
 
+# API đưa ra vai trò của user
+# Bắt buộc người dùng phải có session (đã login) mới được gọi API này
+@login_required 
+def api_select_role(request):
+    if request.method == "POST":
+        try:
+            # Lấy dữ liệu JSON từ Frontend gửi lên
+            data = json.loads(request.body)
+            role = data.get("role")
+
+            # Tuyệt chiêu của Session: Lấy trực tiếp user đang đăng nhập cực kỳ an toàn
+            user = request.user 
+            
+            # Tạo profile nếu chưa có, hoặc lấy profile cũ ra để cập nhật
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            profile.role = role
+            profile.save()
+
+            return JsonResponse({"message": "Cập nhật role thành công!"}, status=200)
+            
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+            
+    return JsonResponse({"error": "Chỉ chấp nhận phương thức POST"}, status=405)
+
+# API nhận câu trả lời khảo sát từ Frontend
+@login_required
+def api_survey(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            answers = data.get("answers") # Lấy mảng câu trả lời
+
+            user = request.user
+            profile = UserProfile.objects.get(user=user)
+            
+            # Lưu mảng câu trả lời vào database
+            profile.survey_answers = answers
+            profile.save()
+
+            return JsonResponse({"message": "Lưu khảo sát thành công!"}, status=200)
+            
+        except UserProfile.DoesNotExist:
+            return JsonResponse({"error": "Người dùng chưa chọn vai trò (role) ở bước 1."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+            
+    return JsonResponse({"error": "Chỉ chấp nhận phương thức POST"}, status=405)
