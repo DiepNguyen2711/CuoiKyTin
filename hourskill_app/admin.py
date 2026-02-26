@@ -1,64 +1,59 @@
-from django.contrib import admin
 from django.apps import apps
+from django.contrib import admin
+from django.contrib.admin.sites import AlreadyRegistered, NotRegistered
+from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import User
-from django.contrib.admin.sites import NotRegistered
+
 from .models import UserProfile
 
-# ==========================================
-# 1. TÙY CHỈNH CHUNG CỦA TRANG ADMIN
-# ==========================================
-# Tùy chỉnh tiêu đề trang quản trị cho xịn sò
+
+User = get_user_model()
+
+
 admin.site.site_header = "Hệ thống Quản trị HourSkill"
 admin.site.site_title = "Admin HourSkill"
 
 
-# ==========================================
-# 2. ĐĂNG KÝ THỦ CÔNG CÁC BẢNG QUAN TRỌNG (Giao diện Custom)
-# ==========================================
-
-# --- A. Check khảo sát của các user (Gắn vào bảng User) ---
-# Tạo một block hiển thị cho UserProfile
 class UserProfileInline(admin.StackedInline):
+    """Embed onboarding details (role, survey) inside the user edit page."""
+
     model = UserProfile
     can_delete = False
     verbose_name_plural = 'Thông tin Onboarding (Vai trò & Khảo sát)'
 
-# Tạo một UserAdmin mới, kế thừa cái cũ và nhét block UserProfile vào
+
 class UserAdmin(BaseUserAdmin):
+    """Extend the default user admin to surface profile data inline."""
+
     inlines = (UserProfileInline,)
 
-# Bắt lỗi an toàn khi gỡ đăng ký bảng User cũ của Django 
+
 try:
     admin.site.unregister(User)
 except NotRegistered:
-    pass # Nếu User chưa được đăng ký thì lẳng lặng bỏ qua, không báo lỗi
+    # If the user model was not registered yet, continue without error
+    pass
 
-# Đăng ký lại bằng bảng User mới đã được nâng cấp
 admin.site.register(User, UserAdmin)
 
 
-# --- B. MỤC USER PROFILE ĐỨNG RIÊNG ---
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    # Hiển thị 2 cột này ở ngoài danh sách
-    list_display = ('user', 'role') 
-    
-    # Thêm thanh tìm kiếm theo tên, email và vai trò (rất tiện để lọc)
-    search_fields = ('user__username', 'user__email', 'role') 
-    
-    # Thêm bộ lọc bên tay phải
+    """Admin view for standalone profile records with helpful filters."""
+
+    list_display = ('user', 'role')
+    search_fields = ('user__username', 'user__email', 'role')
     list_filter = ('role',)
 
 
-# ==========================================
-# 3. TỰ ĐỘNG ĐĂNG KÝ CÁC BẢNG CÒN LẠI (Quét tự động)
-# ==========================================
-# Đặt vòng lặp ở cuối cùng để không "giành giật" với các model đã custom ở trên
 app_models = apps.get_app_config('hourskill_app').get_models()
 
 for model in app_models:
+    # Skip models that are explicitly registered above to avoid duplicates
+    if model in {User, UserProfile}:
+        continue
     try:
         admin.site.register(model)
-    except admin.sites.AlreadyRegistered:
-        pass # Bảng nào đăng ký ở trên rồi thì nó sẽ lướt qua êm ái
+    except AlreadyRegistered:
+        # If a model is already registered elsewhere, leave it untouched
+        continue
