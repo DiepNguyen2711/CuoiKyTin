@@ -1,11 +1,16 @@
+"""URL routing for the HourSkill app covering pages and JSON APIs."""
+
 from django.urls import path
+
 from . import views
+
 
 urlpatterns = [
     # --- GIAO DIỆN CHÍNH ---
     path('', views.main_view, name='home'),
     path('profile/<str:username>/', views.profile_view, name='profile_view'), # Trang cá nhân
     path('register/', views.register_view, name='register'),
+    # Render the form-based login page
     path('login/', views.login_view, name='login'),
     path('logout/', views.user_logout, name='logout'),
 
@@ -16,12 +21,14 @@ urlpatterns = [
 
     # --- API TÍNH NĂNG CŨ (Của nhóm) ---
     path('api/register/', views.api_register, name='api_register'),
+    # JSON: Authenticate user via email/password
     path('api/login/', views.api_login, name='api_login'),
     path('api/courses/', views.api_get_courses, name='api_get_courses'),
     path('api/purchase-video/', views.api_purchase_video, name='api_purchase_video'),
     path('api/ping-watch/', views.ping_watch_session, name='ping_watch_session'),
     path('api/reward-ads/', views.api_reward_ads, name='api_reward_ads'),
     path('api/post-comment/', views.api_post_comment, name='api_post_comment'),
+    # JSON: Retrieve recent notifications and unread count
     path('api/notifications/', views.api_get_notifications, name='api_get_notifications'),
     path('api/log-behavior/', views.api_log_behavior, name='api_log_behavior'),
 ]

@@ -24,23 +24,41 @@
 </div>
 
 <script>
-const email = localStorage.getItem("email");
+// Hàm hỗ trợ tự động lấy CSRF Token từ Cookie của trình duyệt
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 
+const csrftoken = getCookie('csrftoken');
+
+// Kiểm tra email (nếu vẫn cần dùng email lưu tạm ở localStorage từ lúc đăng ký/đăng nhập)
+const email = localStorage.getItem("email");
 if (!email) {
+  alert("Bạn cần đăng nhập trước!");
   window.location.href = "login.html";
-};
-if (!email) {
-  alert("Session hết hạn!");
-  window.location.href = "register.html";
 }
 
 function selectRole() {
   const role = document.getElementById("role").value;
-  const email = localStorage.getItem("email");
   document.getElementById("progressBar").style.width = "40%";
+  
   fetch("/api/select-role", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken  // 👉 Đính kèm thẻ bảo vệ của Django
+    },
     body: JSON.stringify({ email, role }),
   });
 
@@ -50,7 +68,6 @@ function selectRole() {
 
 function renderUserStory(role) {
   const box = document.getElementById("userStoryBox");
-
   let story = "";
 
   if (role === "student") {
@@ -64,6 +81,7 @@ function renderUserStory(role) {
     <p><strong>User Story:</strong><br>
     Với tư cách là giảng viên, tôi muốn tạo ra những khóa học có sức ảnh hưởng lớn để thu hút thêm sinh viên và tăng thu nhập.</p>`;
   }
+  
   if (role === "researcher") {
     story = `
     <p><strong>User Story:</strong><br>
@@ -95,13 +113,14 @@ function renderSurvey(role) {
       "Bạn gặp khó khăn gì khi dạy online?"
     ];
   }
+  
   if (role === "researcher") {
-  questions = [
-    "Bạn đang nghiên cứu lĩnh vực nào?",
-    "Bạn cần AI hỗ trợ ở mức độ nào?",
-    "Mục tiêu công bố khoa học của bạn?",
-    "Bạn dành bao nhiêu giờ/tuần cho nghiên cứu?"
-  ];
+    questions = [
+      "Bạn đang nghiên cứu lĩnh vực nào?",
+      "Bạn cần AI hỗ trợ ở mức độ nào?",
+      "Mục tiêu công bố khoa học của bạn?",
+      "Bạn dành bao nhiêu giờ/tuần cho nghiên cứu?"
+    ];
   }
 
   box.innerHTML = "";
@@ -121,37 +140,26 @@ function renderSurvey(role) {
 }
 
 async function submitSurvey() {
-  const email = localStorage.getItem("email");
   const inputs = document.querySelectorAll("#surveyBox input");
   document.getElementById("progressBar").style.width = "100%";
+  
   let answers = [];
   inputs.forEach(input => answers.push(input.value));
 
+  // Gửi API khảo sát
   await fetch("/api/survey", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken // 👉 Đính kèm thẻ bảo vệ của Django
+    },
     body: JSON.stringify({ email, answers }),
   });
 
-  // 👉 Login lại để lấy token mới
-  const password = prompt("Nhập lại mật khẩu để hoàn tất:");
-  
-  const res = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-
-  const data = await res.json();
-  localStorage.setItem("token", data.token);
-
+  // Do Django đã dùng Session Cookie, chỉ cần chuyển thẳng user về trang chủ!
+  alert("Cập nhật hồ sơ thành công!");
   window.location.href = "/";
-  const payload = JSON.parse(atob(data.token.split(".")[1]));
-
 }
-  window.onload = () => {
-    selectRole();
-  };
 
 </script>
 
