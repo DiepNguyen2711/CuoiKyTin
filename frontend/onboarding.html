@@ -12,13 +12,11 @@
   <div class="auth-card">
     <h2>Bạn là ai?</h2>
 
-    <select id="role" class="auth-input-group">
+    <select id="role" class="auth-input-group" onchange="selectRole()">
       <option value="student">Học sinh / Sinh viên</option>
       <option value="lecturer">Giảng viên</option>
       <option value="researcher">Nhà nghiên cứu</option>
     </select>
-
-    <button class="auth-button" onclick="selectRole()">Tiếp tục</button>
 
     <div id="userStoryBox" style="margin-top:20px;"></div>
     <div id="surveyBox"></div>
@@ -26,6 +24,15 @@
 </div>
 
 <script>
+const email = localStorage.getItem("email");
+
+if (!email) {
+  window.location.href = "login.html";
+};
+if (!email) {
+  alert("Session hết hạn!");
+  window.location.href = "register.html";
+}
 
 function selectRole() {
   const role = document.getElementById("role").value;
@@ -57,6 +64,11 @@ function renderUserStory(role) {
     <p><strong>User Story:</strong><br>
     Với tư cách là giảng viên, tôi muốn tạo ra những khóa học có sức ảnh hưởng lớn để thu hút thêm sinh viên và tăng thu nhập.</p>`;
   }
+  if (role === "researcher") {
+    story = `
+    <p><strong>User Story:</strong><br>
+    Là một nhà nghiên cứu, tôi muốn có một công cụ AI hỗ trợ để tăng tốc quá trình nghiên cứu và đạt được nhiều công bố khoa học hơn.</p>`;
+  }
 
   box.innerHTML = story;
 }
@@ -82,6 +94,14 @@ function renderSurvey(role) {
       "Bạn muốn xây dựng thương hiệu cá nhân mạnh đến mức nào?",
       "Bạn gặp khó khăn gì khi dạy online?"
     ];
+  }
+  if (role === "researcher") {
+  questions = [
+    "Bạn đang nghiên cứu lĩnh vực nào?",
+    "Bạn cần AI hỗ trợ ở mức độ nào?",
+    "Mục tiêu công bố khoa học của bạn?",
+    "Bạn dành bao nhiêu giờ/tuần cho nghiên cứu?"
+  ];
   }
 
   box.innerHTML = "";
@@ -126,6 +146,8 @@ async function submitSurvey() {
   localStorage.setItem("token", data.token);
 
   window.location.href = "/";
+  const payload = JSON.parse(atob(data.token.split(".")[1]));
+
 }
 
 </script>
