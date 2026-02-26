@@ -69,15 +69,26 @@ async function register() {
   const res = await fetch("/api/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fullName, email, password, confirmPassword }),
+    body: JSON.stringify({
+    fullName: username,
+    email,
+    password,
+    confirmPassword: password
+}),
   });
 
   const data = await res.json();
 
   if (res.ok) {
-  localStorage.setItem("email", email);
-  window.location.href = "onboarding.html";
-  } else {
+
+    // ✅ Lưu email cho onboarding
+    localStorage.setItem("email", email);
+
+    alert(data.message || "Đăng ký thành công!");
+
+    // 👉 chuyển thẳng sang onboarding
+    window.location.href = "onboarding.html";
+    } else {
     errorText.innerText = data.message;
   }
 }
