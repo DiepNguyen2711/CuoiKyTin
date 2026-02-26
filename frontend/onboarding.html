@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Onboarding</title>
+  <link rel="stylesheet" href="tailwind.css">
+</head>
+<body>
+<div class="progress-container">
+  <div id="progressBar" class="progress-bar"></div>
+</div>
+<div class="auth-container">
+  <div class="auth-card">
+    <h2>Bạn là ai?</h2>
+
+    <select id="role" class="auth-input-group" onchange="selectRole()">
+      <option value="student">Học sinh / Sinh viên</option>
+      <option value="lecturer">Giảng viên</option>
+      <option value="researcher">Nhà nghiên cứu</option>
+    </select>
+
+    <div id="userStoryBox" style="margin-top:20px;"></div>
+    <div id="surveyBox"></div>
+  </div>
+</div>
+
+<script>
+// Hàm hỗ trợ tự động lấy CSRF Token từ Cookie của trình duyệt
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+// Kiểm tra email (nếu vẫn cần dùng email lưu tạm ở localStorage từ lúc đăng ký/đăng nhập)
+const email = localStorage.getItem("email");
+if (!email) {
+  alert("Bạn cần đăng nhập trước!");
+  window.location.href = "login.html";
+}
+
+function selectRole() {
+  const role = document.getElementById("role").value;
+  document.getElementById("progressBar").style.width = "40%";
+  
+  fetch("/api/select-role", {
+    method: "POST",
+    headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken  // 👉 Đính kèm thẻ bảo vệ của Django
+    },
+    body: JSON.stringify({ email, role }),
+  });
+
+  renderUserStory(role);
+  renderSurvey(role);
+}
+
+function renderUserStory(role) {
+  const box = document.getElementById("userStoryBox");
+  let story = "";
+
+  if (role === "student") {
+    story = `
+    <p><strong>User Story:</strong><br>
+    Là một học sinh/sinh viên, tôi muốn có một lộ trình học tập cá nhân hóa để có thể tăng thu nhập và cơ hội nghề nghiệp.</p>`;
+  }
+
+  if (role === "lecturer") {
+    story = `
+    <p><strong>User Story:</strong><br>
+    Với tư cách là giảng viên, tôi muốn tạo ra những khóa học có sức ảnh hưởng lớn để thu hút thêm sinh viên và tăng thu nhập.</p>`;
+  }
+  
+  if (role === "researcher") {
+    story = `
+    <p><strong>User Story:</strong><br>
+    Là một nhà nghiên cứu, tôi muốn có một công cụ AI hỗ trợ để tăng tốc quá trình nghiên cứu và đạt được nhiều công bố khoa học hơn.</p>`;
+  }
+
+  box.innerHTML = story;
+}
+
+function renderSurvey(role) {
+  const box = document.getElementById("surveyBox");
+  document.getElementById("progressBar").style.width = "40%";
+  let questions = [];
+
+  if (role === "student") {
+    questions = [
+      "Bạn muốn tăng thu nhập bao nhiêu % sau khóa học?",
+      "Bạn muốn đạt vị trí công việc nào?",
+      "Bạn có cần chứng chỉ quốc tế không?",
+      "Bạn có bao nhiêu giờ/tuần để đầu tư cho việc học?"
+    ];
+  }
+
+  if (role === "lecturer") {
+    questions = [
+      "Bạn muốn tăng bao nhiêu học viên trong 6 tháng?",
+      "Bạn có muốn mở khóa học trả phí không?",
+      "Bạn muốn xây dựng thương hiệu cá nhân mạnh đến mức nào?",
+      "Bạn gặp khó khăn gì khi dạy online?"
+    ];
+  }
+  
+  if (role === "researcher") {
+    questions = [
+      "Bạn đang nghiên cứu lĩnh vực nào?",
+      "Bạn cần AI hỗ trợ ở mức độ nào?",
+      "Mục tiêu công bố khoa học của bạn?",
+      "Bạn dành bao nhiêu giờ/tuần cho nghiên cứu?"
+    ];
+  }
+
+  box.innerHTML = "";
+
+  questions.forEach((q, index) => {
+    box.innerHTML += `
+      <div class="auth-input-group">
+        <label>${q}</label>
+        <input type="text" id="q${index}">
+      </div>
+    `;
+  });
+
+  box.innerHTML += `
+    <button class="auth-button" onclick="submitSurvey()">Hoàn tất</button>
+  `;
+}
+
+async function submitSurvey() {
+  const inputs = document.querySelectorAll("#surveyBox input");
+  document.getElementById("progressBar").style.width = "100%";
+  
+  let answers = [];
+  inputs.forEach(input => answers.push(input.value));
+
+  // Gửi API khảo sát
+  await fetch("/api/survey", {
+    method: "POST",
+    headers: { 
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken // 👉 Đính kèm thẻ bảo vệ của Django
+    },
+    body: JSON.stringify({ email, answers }),
+  });
+
+  // Do Django đã dùng Session Cookie, chỉ cần chuyển thẳng user về trang chủ!
+  alert("Cập nhật hồ sơ thành công!");
+  window.location.href = "/";
+}
+
+</script>
+
+</body>
+</html>
