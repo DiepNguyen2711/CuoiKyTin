@@ -78,21 +78,37 @@ async function register() {
   });
 
   const data = await res.json();
+            try {
+                const res = await fetch("/api/register/", {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken")
+                    },
+                    body: JSON.stringify({
+                        fullName: username,
+                        email,
+                        password,
+                        confirmPassword: password
+                    }),
+                });
 
-  if (res.ok) {
+    if (res.ok) {
 
-    // ✅ Lưu email cho onboarding
-    localStorage.setItem("email", email);
+        // ✅ Lưu email cho onboarding
+        localStorage.setItem("email", email);
 
-    alert(data.message || "Đăng ký thành công!");
+        alert(data.message || "Đăng ký thành công!");
 
-    // 👉 chuyển thẳng sang onboarding
-    window.location.href = "onboarding.html";
-    } else {
-    errorText.innerText = data.message;
-  }
+        // 👉 chuyển thẳng sang onboarding
+        window.location.href = "onboarding.html";
+        } else {
+        errorText.innerText = data.message;
+    }
+    } catch (error) {
+        errorText.innerText = "Đã có lỗi xảy ra. Vui lòng thử lại.";
+    }
 }
 </script>
-
 </body>
 </html>

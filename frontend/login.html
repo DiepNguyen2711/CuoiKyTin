@@ -48,6 +48,52 @@
       window.location.href = "/";
     } else {
       alert(data.message);
+    // 3. Gửi API Đăng nhập kèm hiệu ứng Loading
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const errorText = document.getElementById("error");
+      const loginBtn = document.getElementById("loginBtn");
+
+      errorText.innerText = "";
+
+      if (!email || !password) {
+        errorText.innerText = "Vui lòng nhập đầy đủ Email và Mật khẩu!";
+        return;
+      }
+
+      // Bật trạng thái Loading
+      loginBtn.innerText = "Đang đăng nhập...";
+      loginBtn.disabled = true;
+      loginBtn.style.opacity = "0.7"; 
+
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken") // Đã thêm Token bảo mật
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          window.location.href = "/main/"; 
+        } else {
+          errorText.innerText = data.message || "Sai thông tin đăng nhập!";
+          loginBtn.innerText = "Đăng nhập";
+          loginBtn.disabled = false;
+          loginBtn.style.opacity = "1";
+        }
+      } catch (error) {
+        errorText.innerText = "Lỗi kết nối mạng, vui lòng thử lại!";
+        loginBtn.innerText = "Đăng nhập";
+        loginBtn.disabled = false;
+        loginBtn.style.opacity = "1";
+      }
+    }
     }
   }
   </script>
