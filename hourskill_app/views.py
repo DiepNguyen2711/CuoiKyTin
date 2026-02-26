@@ -164,7 +164,6 @@ def api_toggle_follow(request):
 # ==========================================
 
 @csrf_exempt
-@require_POST
 def api_register(request):
     """API Đăng ký bằng JSON"""
     if request.method == 'POST':
