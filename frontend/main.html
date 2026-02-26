@@ -4,16 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HOURSKILLS</title>
-    
+    <title>HOURSKILLS - Trang Chủ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
-    
+    <script>tailwind.config = { darkMode: 'class' }</script>
     <link rel="stylesheet" href="{% static 'tailwind.css' %}">
 </head>
 
@@ -38,26 +31,24 @@
             <div class="flex gap-3 items-center" id="userMenu">
                 
                 <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-700 transition focus:outline-none">
-                    <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-                    <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
+                    <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
                 </button>
 
                 {% if request.user.is_authenticated %}
-                    <div class="flex items-center gap-3 bg-gray-700 pr-1 pl-3 py-1 rounded-full border border-gray-600 h-10">
+                    <div class="flex items-center gap-3 bg-gray-700 pr-1 pl-3 py-1 rounded-full border border-gray-600 h-10 hover:bg-gray-600 transition cursor-pointer" onclick="window.location.href='{% url 'profile_view' request.user.username %}'">
                         <span class="text-sm font-medium text-gray-200">
-                            Chào, <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                            Chào, <strong>{{ request.user.username }}</strong>
                         </span>
                         <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-blue-400 shrink-0">
-                            <svg class="w-6 h-6 text-gray-400 mt-1 shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                            </svg>
+                            <span class="text-xs font-bold text-gray-700">{{ request.user.username|slice:":1"|upper }}</span>
                         </div>
                     </div>
                     
                     <form action="{% url 'logout' %}" method="post" class="m-0 p-0 flex">
                         {% csrf_token %}
-                        <button type="submit" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất khỏi HOURSKILLS?')" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium shadow-sm">
-                            Đăng xuất
+                        <button type="submit" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất?')" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium shadow-sm">
+                            Thoát
                         </button>
                     </form>
                 {% else %}
@@ -73,8 +64,11 @@
         <aside class="w-64 bg-[#f1f5f9] dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6 fixed left-0 top-16 bottom-0 overflow-y-auto z-40 transition-colors duration-300">
             <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Danh mục</h2>
             <nav class="flex flex-col gap-1">   
-                <a href="#home" class="px-4 py-3 rounded text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-700 font-bold shadow-sm border border-gray-100 dark:border-gray-600 transition-colors">🏠 Trang chủ</a>
+                <a href="/" class="px-4 py-3 rounded text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-700 font-bold shadow-sm border border-gray-100 dark:border-gray-600 transition-colors">🏠 Trang chủ</a>
+                <a href="#upload" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">📹 Đăng Video</a>
                 <a href="#courses" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">📚 Khóa học</a>
+                
+                <div class="h-px bg-gray-200 dark:bg-gray-700 my-2"></div>
                 <a href="#services" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">🔧 Dịch vụ</a>
                 <a href="#teachers" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">👨‍🏫 Giáo viên</a>
                 <a href="#blog" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">✍️ Blog</a>
@@ -87,32 +81,95 @@
                 <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-4 transition-colors">Xin chào bạn đến với HOURSKILLS!</h1>
                 
                 {% if request.user.is_authenticated %}
-                <div class="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 p-4 mb-6 inline-block rounded-r-lg transition-colors">
-                    <p class="text-blue-700 dark:text-blue-300 font-medium">
-                        💰 Ví của bạn: <span class="font-bold text-blue-900 dark:text-blue-400">{{ request.user.wallet.balance_tc|default:"0" }} TC</span>
-                    </p>
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 p-4 rounded-r-lg transition-colors">
+                        <p class="text-blue-700 dark:text-blue-300 font-medium">
+                            💰 Ví của bạn: <span class="font-bold text-blue-900 dark:text-blue-400">{{ request.user.wallet.balance_tc|default:"0" }} TC</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div id="upload" class="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 max-w-2xl shadow-sm">
+                    <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <span>⬆️</span> Upload Video Mới
+                    </h3>
+                    <form id="uploadForm" class="flex flex-col gap-4">
+                        <input type="text" name="title" placeholder="Tiêu đề video (VD: Học Python Bài 1)..." required 
+                               class="p-3 rounded-lg border bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        
+                        <div class="relative">
+                            <input type="file" name="video_file" id="fileInput" required accept="video/*" 
+                                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 dark:file:bg-blue-900 dark:file:text-blue-300 cursor-pointer">
+                        </div>
+
+                        <button type="submit" id="btnUpload" class="self-start px-8 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold shadow-md flex items-center gap-2">
+                            <span>🚀</span> Tải lên ngay
+                        </button>
+                    </form>
+                    <p id="uploadResult" class="mt-3 text-sm font-medium"></p>
                 </div>
                 {% endif %}
-                
-                <p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed transition-colors">Nền tảng học trực tuyến hàng đầu với các khóa học chất lượng cao từ các giáo viên giàu kinh nghiệm.</p>
             </section>
 
             <section id="courses" class="mb-16">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2 transition-colors">
-                    <span class="w-2 h-8 bg-blue-500 rounded"></span> Khóa học nổi bật
+                    <span class="w-2 h-8 bg-blue-500 rounded"></span> Video Mới Nhất
                 </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Lập trình Web cơ bản</h3>
-                        <p class="text-gray-600 dark:text-gray-400 mb-4">Nắm vững HTML, CSS và JavaScript để xây dựng website.</p>
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Xem chi tiết</button>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {% for video in videos %}
+                    <div class="bg-gray-50 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md transition duration-300 flex flex-col h-full">
+                        
+                        <div class="bg-black aspect-video relative group">
+                            <video controls class="w-full h-full object-contain" preload="metadata">
+                                <source src="{{ video.file.url }}" type="video/mp4">
+                                Trình duyệt của bạn không hỗ trợ video.
+                            </video>
+                        </div>
+
+                        <div class="p-5 flex flex-col flex-1">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-lg font-bold text-gray-800 dark:text-white line-clamp-2" title="{{ video.title }}">
+                                    {{ video.title }}
+                                </h3>
+                                <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 text-xs font-bold px-2 py-1 rounded shrink-0 ml-2">
+                                    {{ video.price_tc }} TC
+                                </span>
+                            </div>
+                            
+                            <div class="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <a href="{% url 'profile_view' video.creator.username %}" class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold hover:opacity-90 transition">
+                                        {{ video.creator.username|slice:":1"|upper }}
+                                    </a>
+                                    
+                                    <div class="flex flex-col">
+                                        <a href="{% url 'profile_view' video.creator.username %}" class="text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition">
+                                            {{ video.creator.username }}
+                                        </a>
+                                        <span class="text-xs text-gray-400">{{ video.created_at|date:"d/m/Y" }}</span>
+                                    </div>
+                                </div>
+
+                                {% if request.user != video.creator %}
+                                <button onclick="handleFollow(this, {{ video.creator.id }})" 
+                                        class="text-xs px-3 py-1.5 rounded-full font-bold border transition-all duration-200
+                                        {% if request.user in video.creator.followers.all %}
+                                            bg-gray-200 text-gray-600 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600
+                                        {% else %}
+                                            bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50
+                                        {% endif %}">
+                                    {% if request.user in video.creator.followers.all %}Đang theo dõi{% else %}+ Follow{% endif %}
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Python & Django</h3>
-                        <p class="text-gray-600 dark:text-gray-400 mb-4">Học cách xây dựng hệ thống quản lý chuyên nghiệp.</p>
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Xem chi tiết</button>
+                    {% empty %}
+                    <div class="col-span-full py-12 text-center bg-gray-50 dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+                        <p class="text-gray-500 dark:text-gray-400 text-lg">Chưa có video nào. Hãy là người đầu tiên đăng tải! 🚀</p>
                     </div>
+                    {% endfor %}
                 </div>
             </section>
         </main>
@@ -125,47 +182,87 @@
     </footer>
 
     <script>
-        // Lấy các element cần thiết
+        // UPLOAD VIDEO
+        document.getElementById("uploadForm")?.addEventListener("submit", function(e) {
+            e.preventDefault();
+            const btn = document.getElementById("btnUpload");
+            const res = document.getElementById("uploadResult");
+            btn.disabled = true; btn.innerHTML = '<span>⏳</span> Đang xử lý...';
+            res.innerText = "Đang đẩy video lên server, vui lòng không tắt trang...";
+            res.className = "mt-3 text-sm text-blue-600 animate-pulse";
+            const formData = new FormData(this);
+            fetch("/api/upload-video/", { method: "POST", body: formData })
+            .then(r => r.json())
+            .then(d => {
+                if(d.status === 'success') {
+                    res.innerText = "✅ Thành công! Đang tải lại trang...";
+                    res.className = "mt-3 text-sm text-green-600 font-bold";
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    res.innerText = "❌ Lỗi: " + d.message;
+                    res.className = "mt-3 text-sm text-red-600 font-bold";
+                    btn.disabled = false; btn.innerHTML = '<span>🚀</span> Tải lên ngay';
+                }
+            })
+            .catch(err => {
+                res.innerText = "❌ Lỗi kết nối server!";
+                btn.disabled = false; btn.innerHTML = '<span>🚀</span> Tải lên ngay';
+            });
+        });
+
+        // FOLLOW
+        function handleFollow(btn, id) {
+            btn.style.opacity = "0.7";
+            fetch("/api/follow/", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({creator_id: id})
+            })
+            .then(r => r.json())
+            .then(d => {
+                btn.style.opacity = "1";
+                if(d.status === 'success') {
+                    btn.innerText = d.text;
+                    if (d.is_active) {
+                        btn.className = "text-xs px-3 py-1.5 rounded-full font-bold border transition-all duration-200 bg-gray-200 text-gray-600 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600";
+                    } else {
+                        btn.className = "text-xs px-3 py-1.5 rounded-full font-bold border transition-all duration-200 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50";
+                    }
+                }
+            });
+        }
+
+        // DARK MODE
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
         const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
         const htmlRoot = document.getElementById('html-root');
 
-        // Hàm kiểm tra và set icon tương ứng khi load trang
         function initTheme() {
             if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 htmlRoot.classList.add('dark');
-                themeToggleLightIcon.classList.remove('hidden'); // Đang tối thì hiện icon mặt trời để sang sáng
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
             } else {
                 htmlRoot.classList.remove('dark');
-                themeToggleDarkIcon.classList.remove('hidden'); // Đang sáng thì hiện icon mặt trăng để sang tối
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
             }
         }
-
-        // Chạy hàm khởi tạo theme
         initTheme();
 
-        // Xử lý sự kiện click nút chuyển đổi Dark Mode
-themeToggleBtn.addEventListener('click', function() {
-    // 1. Kiểm tra xem hiện tại đang là Dark hay Light
-    if (htmlRoot.classList.contains('dark')) {
-        // Đang tối -> Chuyển sang sáng
-        htmlRoot.classList.remove('dark');
-        localStorage.setItem('color-theme', 'light');
-        
-        // Cập nhật lại Icon (nếu bạn có dùng icon mặt trời/mặt trăng)
-        themeToggleDarkIcon.classList.remove('hidden');
-        themeToggleLightIcon.classList.add('hidden');
-    } else {
-        // Đang sáng -> Chuyển sang tối
-        htmlRoot.classList.add('dark');
-        localStorage.setItem('color-theme', 'dark');
-        
-        // Cập nhật lại Icon
-        themeToggleDarkIcon.classList.add('hidden');
-        themeToggleLightIcon.classList.remove('hidden');
-    }
-}); 
+        themeToggleBtn.addEventListener('click', function() {
+            if (htmlRoot.classList.contains('dark')) {
+                htmlRoot.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+            } else {
+                htmlRoot.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+                themeToggleDarkIcon.classList.add('hidden');
+                themeToggleLightIcon.classList.remove('hidden');
+            }
+        }); 
     </script>
 </body>
 </html>
