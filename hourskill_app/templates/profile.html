@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="vi"><head>
+    <meta charset="UTF-8">
+    <title>Hồ sơ {{ profile_user.username }}</title>
+    <script src="https://cdn.tailwindcss.com"></script></head><body class="bg-gray-100 min-h-screen p-8 font-sans">
+    <div class="max-w-5xl mx-auto">
+        <a href="/" class="inline-flex items-center text-blue-600 hover:underline mb-6 font-medium">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Quay lại trang chủ
+        </a>
+
+        <div class="bg-white rounded-2xl shadow-sm p-8 text-center mb-10">
+            <div class="w-24 h-24 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full mx-auto flex items-center justify-center text-4xl text-white font-bold mb-4 shadow-lg">
+                {{ profile_user.username|slice:":1"|upper }}
+            </div>
+            
+            <h1 class="text-3xl font-extrabold text-gray-900">{{ profile_user.username }}</h1>
+            <p class="text-gray-500 mt-1">Content Creator</p>
+            
+            <div class="mt-6 flex justify-center gap-4">
+                <div class="bg-gray-50 px-6 py-3 rounded-lg border border-gray-100">
+                    <span class="font-bold text-2xl block text-gray-800">{{ videos.count }}</span> 
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Video</span>
+                </div>
+                <div class="bg-gray-50 px-6 py-3 rounded-lg border border-gray-100">
+                    <span class="font-bold text-2xl block text-gray-800" id="followerCount">{{ follower_count }}</span> 
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Người theo dõi</span>
+                </div>
+            </div>
+
+            {% if request.user != profile_user %}
+            <button onclick="handleFollow(this, {{ profile_user.id }})"
+                class="mt-8 px-8 py-2.5 rounded-full font-bold shadow-sm transition transform hover:scale-105
+                {% if is_following %}bg-gray-200 text-gray-700 hover:bg-gray-300{% else %}bg-blue-600 text-white hover:bg-blue-700{% endif %}">
+                {% if is_following %}Đang theo dõi{% else %}+ Theo dõi{% endif %}
+            </button>
+            {% endif %}
+        </div>
+
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Danh sách Video</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for video in videos %}
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition duration-300 border border-gray-100">
+                <div class="bg-black aspect-video">
+                    <video controls class="w-full h-full object-contain">
+                        <source src="{{ video.file.url }}" type="video/mp4">
+                    </video>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-bold text-gray-900 truncate mb-1" title="{{ video.title }}">{{ video.title }}</h3>
+                    <div class="flex justify-between items-center text-xs text-gray-500">
+                        <span>{{ video.created_at|date:"d/m/Y" }}</span>
+                        <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded">{{ video.price_tc }} TC</span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full py-12 text-center text-gray-400 bg-white rounded-xl border border-dashed border-gray-200">
+                <p>Người dùng này chưa đăng video nào.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function handleFollow(btn, id) {
+            fetch("/api/follow/", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({creator_id: id})
+            })
+            .then(r => r.json())
+            .then(d => {
+                if(d.status === 'success') {
+                    btn.innerText = d.text;
+                    if(d.is_active) {
+                        btn.className = "mt-8 px-8 py-2.5 rounded-full font-bold shadow-sm transition transform hover:scale-105 bg-gray-200 text-gray-700 hover:bg-gray-300";
+                    } else {
+                        btn.className = "mt-8 px-8 py-2.5 rounded-full font-bold shadow-sm transition transform hover:scale-105 bg-blue-600 text-white hover:bg-blue-700";
+                    }
+                    document.getElementById('followerCount').innerText = d.new_count;
+                }
+            });
+        }
+    </script></body></html>
