@@ -119,3 +119,123 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => console.log("Server chạy tại http://localhost:3000"));
+  const token = localStorage.getItem("token");
+  const videoId =
+    new URLSearchParams(window.location.search)
+    .get("id");
+
+  /* ================= LOAD VIDEO ================= */
+
+  async function loadVideo(){
+
+  const res = await fetch(`/api/video/${videoId}`,{
+    headers:{
+      Authorization:"Bearer "+token
+    }
+  });
+
+  const data = await res.json();
+
+  document.getElementById("videoTitle")
+    .innerText = data.title;
+
+  document.getElementById("creatorName")
+    .innerText = data.creator.name;
+
+  document.getElementById("creatorAvatar")
+    .src = data.creator.avatar;
+
+  // ✅ LOCK CHECK
+  if(data.locked){
+
+    document.getElementById("unlockPopup")
+      .classList.remove("hidden");
+
+    document.getElementById("unlockText")
+      .innerText =
+      `Bạn cần ${data.requiredTC} TC để mở khóa`;
+
+  }else{
+
+    document.getElementById("videoPlayer")
+      .src = data.videoUrl;
+  }
+
+  setupFollow(data.creator.id, data.following);
+
+  }
+
+  loadVideo();
+
+  async function setupFollow(creatorId, following){
+
+  const btn = document.getElementById("followBtn");
+
+  updateBtn();
+
+  btn.onclick = async ()=>{
+
+    await fetch(`/api/follow/${creatorId}`,{
+      method:"POST",
+      headers:{
+        Authorization:"Bearer "+token
+      }
+    });
+
+    following = !following;
+    updateBtn();
+  };
+
+  function updateBtn(){
+    btn.innerText =
+      following ? "Following" : "Follow";
+
+    btn.className =
+      following
+      ? "px-5 py-2 bg-gray-300 rounded-full"
+      : "px-5 py-2 bg-blue-500 text-white rounded-full";
+  }
+
+  }
+  document
+  .getElementById("notifyBtn")
+  .onclick = async ()=>{
+
+  await fetch(`/api/creator/notify-toggle`,{
+    method:"POST",
+    headers:{
+      Authorization:"Bearer "+token
+    }
+  });
+
+  alert("Đã bật thông báo Creator 🔔");
+  };
+  async function unlockVideo(){
+
+  const res = await fetch(
+    `/api/video/${videoId}/unlock`,
+    {
+      method:"POST",
+      headers:{
+        Authorization:"Bearer "+token
+      }
+    }
+  );
+
+  const data = await res.json();
+
+  if(res.ok){
+
+    document
+      .getElementById("unlockPopup")
+      .classList.add("hidden");
+
+    document
+      .getElementById("videoPlayer")
+      .src = data.videoUrl;
+
+  }else{
+    alert(data.message);
+  }
+
+  };
