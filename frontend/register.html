@@ -96,7 +96,14 @@
                 btn.style.color = '#9ca3af'; 
             }
         }
-
+    // Nhấn phím Enter trên toàn trang để Đăng nhập
+    document.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        register();
+      }
+    });
+    
+    // Gửi API Đăng ký kèm hiệu ứng Loading
         async function register() {
             const username = document.getElementById("username").value.trim();
             const email = document.getElementById("email").value.trim();
