@@ -7,4 +7,5 @@ def create_user_wallet(sender, instance, created, **kwargs):
     # Biến 'created' sẽ mang giá trị True nếu đây là User mới được đăng ký
     if created:
         # Tự động tạo Ví nối với User này và nạp sẵn 5 TC
-        Wallet.objects.create(user=instance, balance=5)
+        Wallet.objects.create(user=instance)
+        
