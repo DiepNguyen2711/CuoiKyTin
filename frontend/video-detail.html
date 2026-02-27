@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Detail - HourSkill</title>
+  <link rel="stylesheet" href="tailwind.css">
+</head>
+<body>
+  <div class="max-w-6xl mx-auto mt-8 px-4">
+    <!-- VIDEO PLAYER -->
+    <div class="bg-black rounded-xl overflow-hidden">
+      <video id="videoPlayer" controls class="w-full h-[500px] object-contain"></video>
+    </div>
+
+    <!-- VIDEO INFO -->
+    <div class="mt-6">
+      <h1 id="videoTitle" class="text-2xl font-bold mb-4"></h1>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <img id="creatorAvatar" class="w-12 h-12 rounded-full" alt="creator" />
+          <div>
+            <p id="creatorName" class="font-semibold"></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="notifyBtn" class="p-3 rounded-full bg-gray-100 hover:bg-gray-200" title="Bật thông báo">
+            🔔
+          </button>
+          <button id="followBtn" class="px-5 py-2 bg-blue-500 text-white rounded-full">Follow</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP LOCK -->
+  <div id="unlockPopup" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-xl w-[350px]">
+      <h2 class="text-lg font-bold mb-3">🔒 Video bị khóa</h2>
+      <p id="unlockText" class="mb-4 text-gray-600"></p>
+      <button id="unlockBtn" class="w-full bg-blue-500 text-white py-2 rounded-lg">Mở khóa</button>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const videoId = params.get('id');
+    if (!videoId) {
+      window.location.href = 'main.html';
+    }
+
+    let following = false;
+    let creatorId = null;
+
+    async function loadVideo() {
+      try {
+        const res = await fetch(`/api/video/${videoId}/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.message || 'Không tải được video.');
+          window.location.href = 'main.html';
+          return;
+        }
+
+        document.getElementById('videoTitle').innerText = data.title || '';
+        document.getElementById('creatorName').innerText = data.creator?.name || '';
+        document.getElementById('creatorAvatar').src = data.creator?.avatar || '';
+
+        creatorId = data.creator?.id;
+        following = !!data.following;
+        setupFollow();
+        setupNotify();
+
+        if (data.locked) {
+          document.getElementById('unlockPopup').classList.remove('hidden');
+          document.getElementById('unlockText').innerText = `Bạn cần ${data.requiredTC} TC để mở khóa`;
+        } else {
+          document.getElementById('videoPlayer').src = data.videoUrl || '';
+        }
+      } catch (err) {
+        alert('Không tải được video.');
+        window.location.href = 'main.html';
+      }
+    }
+
+    function setupFollow() {
+      const btn = document.getElementById('followBtn');
+
+      const updateBtn = () => {
+        btn.innerText = following ? 'Following' : 'Follow';
+        btn.className = following
+          ? 'px-5 py-2 bg-gray-300 rounded-full'
+          : 'px-5 py-2 bg-blue-500 text-white rounded-full';
+      };
+
+      updateBtn();
+
+      btn.onclick = async () => {
+        if (!creatorId) return;
+        await fetch(`/api/follow/${creatorId}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => {});
+        following = !following;
+        updateBtn();
+      };
+    }
+
+    function setupNotify() {
+      document.getElementById('notifyBtn').onclick = async () => {
+        await fetch('/api/creator/notify-toggle', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => {});
+        alert('Đã bật thông báo Creator 🔔');
+      };
+    }
+
+    async function unlockVideo() {
+      try {
+        const res = await fetch(`/api/video/${videoId}/unlock`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          document.getElementById('unlockPopup').classList.add('hidden');
+          document.getElementById('videoPlayer').src = data.videoUrl || '';
+        } else {
+          alert(data.message || 'Mở khóa thất bại');
+        }
+      } catch (err) {
+        alert('Mở khóa thất bại');
+      }
+    }
+
+    document.getElementById('unlockBtn').addEventListener('click', unlockVideo);
+    loadVideo();
+  </script>
+</body>
+</html>
