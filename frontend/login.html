@@ -1,13 +1,11 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đăng nhập - HourSkill</title>
-  <link rel="stylesheet" href="{% static 'tailwind.css' %}">
+  <link rel="stylesheet" href="tailwind.css">
   <style>
-    /* Tiêu diệt con mắt mặc định của trình duyệt Edge/IE */
     input[type="password"]::-ms-reveal,
     input[type="password"]::-ms-clear {
       display: none;
@@ -42,29 +40,12 @@
       <button id="loginBtn" class="auth-button" onclick="login()">Đăng nhập</button>
 
       <div class="auth-footer mt-4 text-center">
-        Chưa có tài khoản? <a href="/register/" class="text-blue-500 hover:underline">Đăng ký</a>
+        Chưa có tài khoản? <a href="register.html" class="text-blue-500 hover:underline">Đăng ký</a>
       </div>
     </div>
   </div>
 
   <script>
-    // Hàm lấy CSRF token từ Cookie (Bắt buộc cho Django)
-    function getCookie(name) {
-      let cookieValue = null;
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim();
-          if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-          }
-        }
-      }
-      return cookieValue;
-    }
-
-    // 1. Hiển thị mắt
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
 
@@ -74,16 +55,14 @@
       this.style.color = type === 'text' ? '#3b82f6' : '#9ca3af';
     });
 
-    // 2. Nhấn phím Enter trên toàn trang để Đăng nhập
     document.addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         login();
       }
     });
 
-    // 3. Gửi API Đăng nhập kèm hiệu ứng Loading
     async function login() {
-      const email = document.getElementById("email").value;
+      const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
       const errorText = document.getElementById("error");
       const loginBtn = document.getElementById("loginBtn");
@@ -95,25 +74,25 @@
         return;
       }
 
-      // Bật trạng thái Loading
       loginBtn.innerText = "Đang đăng nhập...";
       loginBtn.disabled = true;
-      loginBtn.style.opacity = "0.7"; 
+      loginBtn.style.opacity = "0.7";
 
       try {
         const res = await fetch("/api/login/", {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken") // Đã thêm Token bảo mật
           },
           body: JSON.stringify({ email, password }),
         });
 
         const data = await res.json();
 
-        if (res.ok) {
-          window.location.href = "/main/"; 
+        if (res.ok && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('email', email);
+          window.location.href = "main.html";
         } else {
           errorText.innerText = data.message || "Sai thông tin đăng nhập!";
           loginBtn.innerText = "Đăng nhập";
@@ -128,7 +107,6 @@
       }
     }
 
-    // 4. Mở khóa nút đăng nhập nếu người dùng ấn nút Back
     window.addEventListener('pageshow', function (event) {
       if (event.persisted) {
         const loginBtn = document.getElementById("loginBtn");
@@ -136,10 +114,10 @@
           loginBtn.innerText = "Đăng nhập";
           loginBtn.disabled = false;
           loginBtn.style.opacity = "1";
-          document.getElementById("error").innerText = ""; 
+          document.getElementById("error").innerText = "";
         }
       }
-    });  
+    });
   </script>
 </body>
 </html>
