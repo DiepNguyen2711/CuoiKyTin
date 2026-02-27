@@ -1,17 +1,14 @@
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const cors = require("cors");
-const path = require("path");
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
-const SECRET_KEY = "mysecretkey";
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Enable CORS for local API calls (Django backend) from the static frontend
 app.use(cors());
-app.use(express.static("public"));
 
+<<<<<<< Updated upstream
 let users = []; // fake database
 
 // ================= REGISTER =================
@@ -52,3 +49,24 @@ app.post("/api/register", async (req, res) => {
   res.sendFile(path.join(__dirname, "public", "hourskills.html"));
 });
 });
+=======
+// Serve all static assets (HTML, CSS, JS, images) from this directory
+app.use(express.static(__dirname, {
+  extensions: ['html'],
+  setHeaders: (res, filePath) => {
+    // Cache busting can be tuned here; keep short for HTML
+    if (path.extname(filePath) === '.html') {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  }
+}));
+
+// Fallback: any unknown path serves the main landing page
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'main.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`Static frontend server running at http://localhost:${PORT}`);
+});
+>>>>>>> Stashed changes

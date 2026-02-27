@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+<<<<<<< Updated upstream
 * {
     margin: 0;
     padding: 0;
@@ -18,25 +19,81 @@
     --color-blue-600: #2563eb;
     --color-green-500: #10b981;
     --color-green-600: #059669;
+=======
+/* =============== 1. VARIABLES =============== */
+:root {
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-green-500: #10b981;
+  --color-green-600: #059669;
+
+  /* Auth defaults (light) */
+  --auth-bg-container: linear-gradient(135deg, #3b82f6, #2563eb);
+  --auth-bg-card: #ffffff;
+  --auth-text-title: #1f2937;
+  --auth-text-label: #374151;
+  --auth-input-bg: #f9fafb;
+  --auth-input-border: #d1d5db;
+  --auth-input-text: #1f2937;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --auth-bg-container: #111827;
+    --auth-bg-card: #1f2937;
+    --auth-text-title: #ffffff;
+    --auth-text-label: #d1d5db;
+    --auth-input-bg: #374151;
+    --auth-input-border: #4b5563;
+    --auth-input-text: #ffffff;
+  }
+}
+
+/* =============== 2. RESET & BASE =============== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+>>>>>>> Stashed changes
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: #f9fafb;
-    color: #1f2937;
-    line-height: 1.6;
+  font-family: 'Inter', sans-serif;
+  background-color: #f9fafb;
+  color: #1f2937;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
+<<<<<<< Updated upstream
 /* HEADER STYLES */
+=======
+h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 700; color: var(--color-gray-800); margin-bottom: 1rem; }
+p  { font-size: 1.125rem; line-height: 1.75rem; color: var(--color-gray-600); }
+a  { text-decoration: none; display: inline-block; }
+nav a { white-space: nowrap; }
+
+/* =============== 3. LAYOUT & STRUCTURE =============== */
+>>>>>>> Stashed changes
 header {
-    background-color: var(--color-gray-800);
-    color: white;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: var(--color-gray-800);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+<<<<<<< Updated upstream
 .max-w-7xl { max-width: 80rem; margin: 0 auto; }
 .mx-auto { margin-left: auto; margin-right: auto; }
 .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
@@ -52,6 +109,73 @@ header {
 .gap-4 { gap: 1rem; }
 .gap-6 { gap: 1.5rem; }
 .gap-8 { gap: 2rem; }
+=======
+<<<<<<< Updated upstream
+.max-w-7xl {
+    max-width: 80rem;
+    margin: 0 auto;
+}
+
+.mx-auto {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.py-4 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.py-12 {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.gap-3 {
+    gap: 0.75rem;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.gap-6 {
+    gap: 1.5rem;
+}
+
+.gap-8 {
+    gap: 2rem;
+}
+>>>>>>> Stashed changes
 
 /* LOGO STYLES */
 .text-2xl { font-size: 1.5rem; line-height: 2rem; }
@@ -408,9 +532,166 @@ footer a:hover { color: var(--color-blue-300); }
 .eye-btn:hover { color: var(--color-blue-500); }
 
 .auth-button {
+<<<<<<< Updated upstream
     width: 100%; padding: 12px; border-radius: 10px; font-size: 15px;
     font-weight: 600; background: var(--color-blue-500); color: white; border: none;
     cursor: pointer; transition: background-color 0.2s, transform 0.2s;
+=======
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s;
+=======
+footer {
+  background-color: var(--color-gray-800);
+  color: white;
+  margin-top: auto;
+  padding: 3rem 1.5rem;
+}
+
+footer .max-w-7xl { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 2rem; max-width: 80rem; margin: 0 auto; }
+@media (min-width: 768px) { footer .max-w-7xl { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+footer h3 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 700; color: var(--color-blue-400); margin-bottom: 0.75rem; }
+footer p  { color: var(--color-gray-300); font-size: 1rem; }
+footer a  { color: var(--color-blue-400); text-decoration: none; }
+footer a:hover { color: var(--color-blue-300); }
+
+main {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  min-height: calc(100vh - 400px);
+}
+
+.sidebar {
+  width: 260px;
+  background: #f3f4f6;
+  padding: 20px;
+  height: calc(100vh - 60px);
+  position: sticky;
+  top: 60px;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  transition: 0.3s ease;
+}
+.user-menu:hover { background: rgba(255, 255, 255, 0.2); }
+.user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #3b82f6;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.user-avatar:hover { transform: scale(1.15); }
+.user-name { color: #f3f4f6; font-weight: 600; font-size: 14px; letter-spacing: 0.3px; }
+
+.avatar-container {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-gray-300);
+  flex-shrink: 0;
+}
+.default-avatar { width: 100%; height: 100%; object-fit: cover; }
+
+.progress-container {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--color-blue-500);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+/* =============== 4. AUTH SCREENS =============== */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--auth-bg-container);
+  transition: background 0.3s ease;
+}
+
+.auth-card {
+  background: var(--auth-bg-card);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  animation: fadeInUp 0.5s ease-out;
+  transition: background 0.3s ease;
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--auth-text-title);
+}
+
+.auth-input-group { margin-bottom: 18px; display: flex; flex-direction: column; }
+.auth-input-group label { margin-bottom: 6px; font-weight: 600; font-size: 14px; color: var(--auth-text-label); }
+.auth-input-group input,
+.auth-input-group select {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--auth-input-border);
+  background: var(--auth-input-bg);
+  color: var(--auth-input-text);
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.auth-input-group input:focus,
+.auth-input-group select:focus {
+  outline: none;
+  border-color: var(--color-blue-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+}
+
+.password-wrapper { position: relative; display: flex; align-items: center; }
+.password-wrapper input { width: 100%; padding-right: 40px; }
+.eye-btn {
+  position: absolute; right: 12px; background: none; border: none;
+  cursor: pointer; color: var(--color-gray-400); display: flex; align-items: center; padding: 0;
+}
+.eye-btn:hover { color: var(--color-blue-500); }
+
+.auth-button {
+  width: 100%; padding: 12px; border-radius: 10px; font-size: 15px;
+  font-weight: 600; background: var(--color-blue-500); color: white; border: none;
+  cursor: pointer; transition: background-color 0.2s, transform 0.2s;
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 }
 .auth-button:hover { background: var(--color-blue-600); transform: translateY(-2px); }
 
@@ -419,7 +700,34 @@ footer a:hover { color: var(--color-blue-300); }
 .auth-footer a:hover { text-decoration: underline; }
 .auth-error { color: red; font-size: 13px; margin-bottom: 12px; text-align: center; }
 
+<<<<<<< Updated upstream
 /* ================= 5. ANIMATIONS (HIỆU ỨNG) ================= */
+=======
+<<<<<<< Updated upstream
+.auth-footer {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 14px;
+}
+
+.auth-footer a {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+.auth-error {
+    color: red;
+    font-size: 13px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+/* Animation */
+>>>>>>> Stashed changes
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -435,7 +743,17 @@ footer a:hover { color: var(--color-blue-300); }
         transform: translateY(0);
     }
 }
+<<<<<<< Updated upstream
 
 .course-card {
     animation: fadeInUp 0.5s ease-out;
 }
+=======
+=======
+/* =============== 5. ANIMATIONS =============== */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+.course-card { animation: fadeInUp 0.5s ease-out; }
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes

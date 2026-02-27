@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 {% load static %}
 <!doctype html>
 <html>
@@ -24,6 +25,26 @@
     <div class="auth-container">
       <div class="auth-card">
         <h2>Đăng nhập</h2>
+=======
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng nhập - HourSkill</title>
+  <link rel="stylesheet" href="tailwind.css">
+  <style>
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2>Đăng nhập</h2>
+>>>>>>> Stashed changes
 
         <div class="auth-input-group">
           <label>Email</label>
@@ -49,8 +70,18 @@
           Chưa có tài khoản? <a href="{% url 'register' %}">Đăng ký</a>
         </div>
       </div>
+<<<<<<< Updated upstream
+=======
+
+      <button id="loginBtn" class="auth-button" onclick="login()">Đăng nhập</button>
+
+      <div class="auth-footer mt-4 text-center">
+        Chưa có tài khoản? <a href="register.html" class="text-blue-500 hover:underline">Đăng ký</a>
+      </div>
+>>>>>>> Stashed changes
     </div>
 
+<<<<<<< Updated upstream
     <script>
       // 1. Hiển thị mắt
       const togglePassword = document.getElementById('togglePassword');
@@ -76,13 +107,63 @@
         const errorText = document.getElementById("error");
         const loginBtn = document.getElementById("loginBtn");
 
+<<<<<<< Updated upstream
         errorText.innerText = "";
+=======
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+=======
+  <script>
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    togglePassword.addEventListener('click', function () {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      this.style.color = type === 'text' ? '#3b82f6' : '#9ca3af';
+    });
+
+    document.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        login();
+      }
+    });
+
+    async function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const errorText = document.getElementById("error");
+      const loginBtn = document.getElementById("loginBtn");
+
+      errorText.innerText = "";
+
+      if (!email || !password) {
+        errorText.innerText = "Vui lòng nhập đầy đủ Email và Mật khẩu!";
+        return;
+      }
+
+      loginBtn.innerText = "Đang đăng nhập...";
+      loginBtn.disabled = true;
+      loginBtn.style.opacity = "0.7";
+
+      try {
+        const res = await fetch("/api/login/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+>>>>>>> Stashed changes
+          body: JSON.stringify({ email, password }),
+        });
+>>>>>>> Stashed changes
 
         // Bật trạng thái Loading
         loginBtn.innerText = "Đang đăng nhập...";
         loginBtn.disabled = true; // Khóa nút để không bị bấm double
         loginBtn.style.opacity = "0.7"; // Làm mờ nút đi một chút cho giống hiệu ứng đang xử lý
 
+<<<<<<< Updated upstream
         try {
           const res = await fetch("/api/login/", {
             method: "POST",
@@ -107,6 +188,14 @@
           loginBtn.innerText = "Đăng nhập";
           loginBtn.disabled = false;
           loginBtn.style.opacity = "1";
+=======
+<<<<<<< Updated upstream
+        if (res.ok) {
+          localStorage.setItem("token", data.token);
+          window.location.href = "/";
+        } else {
+          alert(data.message);
+>>>>>>> Stashed changes
         }
       }
     // 4. Mở khóa nút đăng nhập nếu người dùng ấn nút Back quay lại trang này
@@ -126,4 +215,42 @@
       });  
     </script>
   </body>
+<<<<<<< Updated upstream
 </html>
+=======
+</html>
+=======
+        if (res.ok && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('email', email);
+          window.location.href = "main.html";
+        } else {
+          errorText.innerText = data.message || "Sai thông tin đăng nhập!";
+          loginBtn.innerText = "Đăng nhập";
+          loginBtn.disabled = false;
+          loginBtn.style.opacity = "1";
+        }
+      } catch (error) {
+        errorText.innerText = "Lỗi kết nối mạng, vui lòng thử lại!";
+        loginBtn.innerText = "Đăng nhập";
+        loginBtn.disabled = false;
+        loginBtn.style.opacity = "1";
+      }
+    }
+
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) {
+        const loginBtn = document.getElementById("loginBtn");
+        if (loginBtn) {
+          loginBtn.innerText = "Đăng nhập";
+          loginBtn.disabled = false;
+          loginBtn.style.opacity = "1";
+          document.getElementById("error").innerText = "";
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
