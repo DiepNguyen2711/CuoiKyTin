@@ -62,10 +62,9 @@ app.use(express.static(__dirname, {
 }));
 
 // Fallback: any unknown path serves the main landing page
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'main.html'));
+app.use((req, res) => {
+    res.sendFile(path.join(__dirname, 'main.html'));
 });
-
 app.listen(PORT, () => {
   console.log(`Static frontend server running at http://localhost:${PORT}`);
 });
