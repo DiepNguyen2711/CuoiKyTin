@@ -1,92 +1,158 @@
-{% load static %}
-<!doctype html>
-<html>
-  <head>
-    <title>Đăng ký</title>
-    <link rel="stylesheet" href="{% static 'tailwind.css' %}" />
-  </head>
-  <body>
-    <div class="auth-container">
-      <div class="auth-card">
-        <h2>Đăng ký</h2>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký - HourSkill</title>
+  <link rel="stylesheet" href="tailwind.css">
+  <style>
+    /* Ẩn biểu tượng mắt mặc định của Edge/IE để tránh chồng lên nút tùy chỉnh */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2>Đăng ký tài khoản mới</h2>
 
-        <div class="auth-error" id="error"></div>
+      <div class="auth-error" id="error"></div>
 
-        <div class="auth-input-group">
-          <label>Username</label>
-          <input type="text" id="fullName" placeholder="Nhập Username" />
-        </div>
+      <div class="auth-input-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Nhập username của bạn" required>
+      </div>
 
-        <div class="auth-input-group">
-          <label>Email</label>
-          <input type="email" id="email" placeholder="email@example.com" />
-        </div>
+      <div class="auth-input-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="example@gmail.com" required>
+      </div>
 
-        <div class="auth-input-group">
-          <label>Mật khẩu</label>
-          <input type="password" id="password" placeholder="Ít nhất 8 ký tự" />
-        </div>
-
-        <div class="auth-input-group">
-          <label>Xác nhận mật khẩu</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            placeholder="Nhập lại mật khẩu"
-          />
-        </div>
-
-        <button class="auth-button" onclick="register()">Đăng ký</button>
-
-        <div class="auth-footer">
-          Đã có tài khoản? <a href="{% url 'login' %}">Đăng nhập</a>
+      <div class="auth-input-group">
+        <label for="password">Mật khẩu</label>
+        <div class="password-wrapper">
+          <input type="password" id="password" placeholder="Ít nhất 8 ký tự" required />
+          <button type="button" class="eye-btn" onclick="togglePassword('password', this)">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+          </button>
         </div>
       </div>
+
+      <div class="auth-input-group">
+        <label for="confirmPassword">Xác nhận mật khẩu</label>
+        <div class="password-wrapper">
+          <input type="password" id="confirmPassword" placeholder="Nhập lại mật khẩu" required />
+          <button type="button" class="eye-btn" onclick="togglePassword('confirmPassword', this)">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button id="registerBtn" class="auth-button" style="margin-top: 10px;" onclick="registerUser()">
+        Đăng ký
+      </button>
+
+      <div class="auth-footer">
+        Đã có tài khoản? <a href="login.html">Đăng nhập</a>
+      </div>
     </div>
+  </div>
 
-    <script>
-      async function register() {
-        const fullName = document.getElementById("fullName").value;
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        const confirmPassword =
-          document.getElementById("confirmPassword").value;
-        const errorText = document.getElementById("error");
+  <script>
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+      input.setAttribute('type', type);
+      btn.style.color = type === 'text' ? '#3b82f6' : '#9ca3af';
+    }
 
-        errorText.innerText = "";
+    document.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        registerUser();
+      }
+    });
 
-        // ===== Validate phía client =====
-        if (!fullName || !email || !password || !confirmPassword) {
-          errorText.innerText = "Vui lòng nhập đầy đủ thông tin";
-          return;
-        }
+    async function registerUser() {
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const errorText = document.getElementById('error');
+      const registerBtn = document.getElementById('registerBtn');
 
-        if (password.length < 8) {
-          errorText.innerText = "Mật khẩu phải ít nhất 8 ký tự";
-          return;
-        }
+      errorText.innerText = '';
 
-        if (password !== confirmPassword) {
-          errorText.innerText = "Mật khẩu xác nhận không khớp";
-          return;
-        }
+      if (!username || !email || !password || !confirmPassword) {
+        errorText.innerText = 'Vui lòng nhập đầy đủ thông tin!';
+        return;
+      }
 
-        // ===== Gửi lên server =====
-        const res = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, email, password, confirmPassword }),
+      if (password.length < 8) {
+        errorText.innerText = 'Mật khẩu phải ít nhất 8 ký tự!';
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        errorText.innerText = 'Mật khẩu xác nhận không khớp!';
+        return;
+      }
+
+      registerBtn.innerText = 'Đang xử lý...';
+      registerBtn.disabled = true;
+      registerBtn.style.opacity = '0.7';
+
+      try {
+        const res = await fetch('/api/register/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, email, password }),
         });
 
         const data = await res.json();
 
         if (res.ok) {
-          alert(data.message);
-          window.location.href = "login.html";
+          if (data.token) {
+            localStorage.setItem('token', data.token);
+          }
+          localStorage.setItem('email', email);
+          localStorage.setItem('username', username);
+          alert(data.message || 'Đăng ký thành công!');
+          window.location.href = 'onboarding.html';
         } else {
-          errorText.innerText = data.message;
+          errorText.innerText = data.message || 'Có lỗi xảy ra, vui lòng thử lại!';
+          registerBtn.innerText = 'Đăng ký';
+          registerBtn.disabled = false;
+          registerBtn.style.opacity = '1';
+        }
+      } catch (error) {
+        errorText.innerText = 'Lỗi kết nối mạng, vui lòng kiểm tra lại!';
+        registerBtn.innerText = 'Đăng ký';
+        registerBtn.disabled = false;
+        registerBtn.style.opacity = '1';
+      }
+    }
+
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) {
+        const registerBtn = document.getElementById('registerBtn');
+        if (registerBtn) {
+          registerBtn.innerText = 'Đăng ký';
+          registerBtn.disabled = false;
+          registerBtn.style.opacity = '1';
+          document.getElementById('error').innerText = '';
         }
       }
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
