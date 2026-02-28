@@ -1,31 +1,3 @@
-<<<<<<< Updated upstream
-{% load static %}
-<!doctype html>
-<html>
-  <head>
-    <title>Đăng nhập - HourSkill</title>
-    <link rel="stylesheet" href="{% static 'tailwind.css' %}" />
-    <style>
-      /* Ẩn con mắt mặc định của trình duyệt */
-      input::-ms-reveal, input::-ms-clear { display: none; }
-      
-      .relative { position: relative; }
-      .absolute { position: absolute; }
-      .eye-icon { cursor: pointer; color: #6b7280; display: flex; align-items: center; }
-      .eye-icon:hover { color: #3b82f6; }
-      
-      /* Thêm style cho nút khi đang load */
-      .btn-loading {
-          opacity: 0.7;
-          cursor: not-allowed;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="auth-container">
-      <div class="auth-card">
-        <h2>Đăng nhập</h2>
-=======
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -44,77 +16,40 @@
   <div class="auth-container">
     <div class="auth-card">
       <h2>Đăng nhập</h2>
->>>>>>> Stashed changes
+      
+      <div id="error" class="text-red-500 mb-4 text-center text-sm h-5"></div>
 
-        <div class="auth-input-group">
-          <label>Email</label>
-          <input type="email" id="email" placeholder="email@example.com" onkeypress="handleEnter(event)" />
-        </div>
+      <div class="auth-input-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="email@example.com" />
+      </div>
 
-        <div class="auth-input-group">
-          <label>Mật khẩu</label>
-          <div class="password-wrapper">
-            <input type="password" id="password" placeholder="Nhập mật khẩu" />
-            <button type="button" class="eye-btn" id="togglePassword">
-              <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <button id="loginBtn" class="auth-button" onclick="login()">Đăng nhập</button>
-
-        <div class="auth-footer">
-          Chưa có tài khoản? <a href="{% url 'register' %}">Đăng ký</a>
+      <div class="auth-input-group">
+        <label>Mật khẩu</label>
+        <div class="password-wrapper relative">
+          <input type="password" id="password" placeholder="Nhập mật khẩu" class="w-full pr-10" />
+          <button type="button" class="eye-btn absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400" id="togglePassword">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+          </button>
         </div>
       </div>
-<<<<<<< Updated upstream
-=======
 
-      <button id="loginBtn" class="auth-button" onclick="login()">Đăng nhập</button>
+      <button id="loginBtn" class="auth-button w-full mt-4" onclick="login()">Đăng nhập</button>
 
       <div class="auth-footer mt-4 text-center">
         Chưa có tài khoản? <a href="register.html" class="text-blue-500 hover:underline">Đăng ký</a>
       </div>
->>>>>>> Stashed changes
     </div>
+  </div>
 
-<<<<<<< Updated upstream
-    <script>
-      // 1. Hiển thị mắt
-      const togglePassword = document.getElementById('togglePassword');
-      const passwordInput = document.getElementById('password');
-
-      togglePassword.addEventListener('click', function () {
-        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-        passwordInput.setAttribute('type', type);
-        this.style.color = type === 'text' ? '#3b82f6' : '#9ca3af';
-      });
-
-      // 2. Nhấn phím Enter trên toàn trang để Đăng nhập
-      document.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-          login();
-        }
-      });
-
-      // 3. Gửi API Đăng nhập kèm hiệu ứng Loading
-      async function login() {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        const errorText = document.getElementById("error");
-        const loginBtn = document.getElementById("loginBtn");
-
-<<<<<<< Updated upstream
-        errorText.innerText = "";
-=======
-        const res = await fetch("/api/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-=======
   <script>
+    // 1. Cấu hình API Endpoint (Bạn có thể đổi lại /api/login/ nếu không dùng localhost)
+    const API_URL = "http://127.0.0.1:8000/api/login/";
+
+    // 2. Hiển thị mắt
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
 
@@ -124,12 +59,14 @@
       this.style.color = type === 'text' ? '#3b82f6' : '#9ca3af';
     });
 
+    // 3. Nhấn phím Enter để Đăng nhập
     document.addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         login();
       }
     });
 
+    // 4. Gửi API Đăng nhập
     async function login() {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
@@ -143,118 +80,53 @@
         return;
       }
 
+      // Trạng thái Loading
       loginBtn.innerText = "Đang đăng nhập...";
       loginBtn.disabled = true;
       loginBtn.style.opacity = "0.7";
 
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/login/", {
+        const res = await fetch(API_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
->>>>>>> Stashed changes
           body: JSON.stringify({ email, password }),
         });
->>>>>>> Stashed changes
 
-        // Bật trạng thái Loading
-        loginBtn.innerText = "Đang đăng nhập...";
-        loginBtn.disabled = true; // Khóa nút để không bị bấm double
-        loginBtn.style.opacity = "0.7"; // Làm mờ nút đi một chút cho giống hiệu ứng đang xử lý
+        const data = await res.json();
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        try {
-          const res = await fetch("/api/login/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
-          });
-
-          const data = await res.json();
-
-          if (res.ok) {
-            window.location.href = "/main/"; 
-            // Không cần reset nút vì trang sẽ chuyển đi ngay
-          } else {
-            errorText.innerText = data.message;
-            // Nếu lỗi, trả lại trạng thái nút ban đầu để người dùng thử lại
-            loginBtn.innerText = "Đăng nhập";
-            loginBtn.disabled = false;
-            loginBtn.style.opacity = "1";
-          }
-        } catch (error) {
-          errorText.innerText = "Lỗi kết nối mạng, vui lòng thử lại!";
-          loginBtn.innerText = "Đăng nhập";
-          loginBtn.disabled = false;
-          loginBtn.style.opacity = "1";
-=======
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
-        if (res.ok) {
-          localStorage.setItem("token", data.token);
-          window.location.href = "/";
-=======
         if (res.ok && data.token) {
           localStorage.setItem('token', data.token);
-          localStorage.setItem('username', data.username);
-          localStorage.setItem('email', email);
-          window.location.href = "main.html";
->>>>>>> Stashed changes
-        } else {
-          alert(data.message);
->>>>>>> Stashed changes
-        }
-      }
-    // 4. Mở khóa nút đăng nhập nếu người dùng ấn nút Back quay lại trang này
-      window.addEventListener('pageshow', function (event) {
-        // event.persisted sẽ bằng true nếu trang được load ra từ bộ nhớ đệm (cache)
-        if (event.persisted) {
-          const loginBtn = document.getElementById("loginBtn");
-          if (loginBtn) {
-            loginBtn.innerText = "Đăng nhập";
-            loginBtn.disabled = false;
-            loginBtn.style.opacity = "1";
-            
-            // Xóa luôn thông báo lỗi màu đỏ (nếu có) cho giao diện sạch sẽ
-            document.getElementById("error").innerText = ""; 
+          // Lưu username nếu có trả về từ API
+          if (data.username) {
+              localStorage.setItem('username', data.username);
           }
-        }
-      });  
-    </script>
-  </body>
-<<<<<<< Updated upstream
-</html>
-=======
-</html>
-=======
-        if (res.ok && data.token) {
-          localStorage.setItem('token', data.token);
           localStorage.setItem('email', email);
           window.location.href = "main.html";
         } else {
           errorText.innerText = data.message || "Sai thông tin đăng nhập!";
-          loginBtn.innerText = "Đăng nhập";
-          loginBtn.disabled = false;
-          loginBtn.style.opacity = "1";
+          resetLoginButton(loginBtn);
         }
       } catch (error) {
         errorText.innerText = "Lỗi kết nối mạng, vui lòng thử lại!";
-        loginBtn.innerText = "Đăng nhập";
-        loginBtn.disabled = false;
-        loginBtn.style.opacity = "1";
+        resetLoginButton(loginBtn);
       }
     }
 
+    // Hàm tiện ích để reset nút đăng nhập
+    function resetLoginButton(btn) {
+      btn.innerText = "Đăng nhập";
+      btn.disabled = false;
+      btn.style.opacity = "1";
+    }
+
+    // 5. Mở khóa nút đăng nhập nếu dùng nút Back của trình duyệt
     window.addEventListener('pageshow', function (event) {
       if (event.persisted) {
         const loginBtn = document.getElementById("loginBtn");
         if (loginBtn) {
-          loginBtn.innerText = "Đăng nhập";
-          loginBtn.disabled = false;
-          loginBtn.style.opacity = "1";
+          resetLoginButton(loginBtn);
           document.getElementById("error").innerText = "";
         }
       }
@@ -262,5 +134,3 @@
   </script>
 </body>
 </html>
->>>>>>> Stashed changes
->>>>>>> Stashed changes
