@@ -6,18 +6,10 @@ from . import views
 
 
 urlpatterns = [
-    # Render the form-based registration page
-    path('register/', views.register_view, name='register'),
-    # Render the form-based login page
-    path('login/', views.login_view, name='login'),
     # JSON: Create a new user account
     path('api/register/', views.api_register, name='api_register'),
     # JSON: Authenticate user via email/password
     path('api/login/', views.api_login, name='api_login'),
-    # Auth-gated main page view
-    path('main/', views.main_view, name='main_view'),
-    # Terminate the current user session
-    path('logout/', views.user_logout, name='logout'),
     # JSON: Heartbeat to track watch progress
     path('api/ping-watch/', views.ping_watch_session, name='ping_watch_session'),
     # JSON: Upload video assets to storage
