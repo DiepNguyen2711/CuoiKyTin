@@ -1,145 +1,138 @@
+from decimal import Decimal
+
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-# Create your models here.
-from django.contrib.auth.models import AbstractUser
-from django.utils import timezone
 
-# ==========================================
-# 1. HỆ THỐNG NGƯỜI DÙNG & PHÂN QUYỀN
-# ==========================================
 class User(AbstractUser):
-    """
-    Mở rộng bảng User mặc định của Django.
-    Phân biệt rõ người dùng thường (Học viên) và Creator.
-    """
-    is_creator = models.BooleanField(default=False, help_text="Đánh dấu nếu là người sáng tạo nội dung")
-    is_vip = models.BooleanField(default=False, help_text="Đánh dấu nếu là người dùng trả phí VND")
+    """Custom user carrying role flags and trust scoring for anti-abuse controls."""
+
+    # Marks whether the account can publish content
+    is_creator = models.BooleanField(default=False, help_text="Creator accounts can upload content")
+    # Marks whether the account has VIP privileges (paid VND)
+    is_vip = models.BooleanField(default=False, help_text="VIP users have paid VND benefits")
+    # Expiry timestamp for VIP status
     vip_expiry = models.DateTimeField(null=True, blank=True)
-    
-    # Điểm uy tín để chống spam (Innovation Feature)
-    trust_score = models.IntegerField(default=100, help_text="Điểm uy tín, trừ điểm nếu phát hiện treo máy xem video")
+    # Reputation signal to throttle spammy behavior
+    trust_score = models.IntegerField(default=100, help_text="Lower scores indicate suspicious activity")
 
     def __str__(self):
         return f"{self.username} (VIP)" if self.is_vip else self.username
 
-# ==========================================
-# 2. HỆ THỐNG VÍ & TIỀN TỆ (CORE ECONOMY)
-# ==========================================
+
 class Wallet(models.Model):
-    """
-    Ví tiền của người dùng. 
-    LƯU Ý KỸ THUẬT QUAN TRỌNG: LUÔN DÙNG DecimalField cho tiền tệ, KHÔNG DÙNG FloatField để tránh sai số.
-    """
+    """Holds both in-app credits (TC) and real-currency VND for a single user."""
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
-    
-    # TC (Time-Credit) - Tiền ảo nội bộ
-    balance_tc = models.DecimalField(max_digits=12, decimal_places=2, default=5.00) # Tặng 5 TC khi tạo tài khoản
-    
-    # Tiền thật (VNĐ) - Dành cho Creator rút hoặc User nạp VIP
+    # Time-Credit balance (defaults to signup bonus)
+    balance_tc = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('5.00'))
+    # Fiat balance tracked for deposits/withdrawals
     balance_vnd = models.DecimalField(max_digits=15, decimal_places=0, default=0)
-    
+    # Auto-updated on every save to trace wallet mutations
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Ví của {self.user.username} | {self.balance_tc} TC"
+        return f"Wallet of {self.user.username} | {self.balance_tc} TC"
 
-# ==========================================
-# ==========================================
-# 3. HỆ THỐNG NỘI DUNG (VIDEO)
-# ==========================================
+
 class Video(models.Model):
-    """Lưu trữ thông tin về các khóa học/video"""
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='videos')
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    
-    # ĐÂY LÀ DÒNG BẠN CẦN THÊM VÀO:
+    """Represents a single video asset with pricing, ownership, and metadata."""
+
+    # Indexed for faster title search
+    title = models.CharField(max_length=255, db_index=True)
+    # Optional course grouping for structured learning paths
+    course = models.ForeignKey('Course', on_delete=models.CASCADE, related_name='videos', null=True, blank=True)
+    # Top-level thematic category
     category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='videos')
-    
-    # Đường dẫn file (nên thiết lập Upload vào folder 'videos/')
-    file_url = models.FileField(upload_to='videos/') 
+    # Owner/creator of the video
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_videos')
+    # Freeform description for SEO/context
+    description = models.TextField(blank=True)
+    # Stored media path for the video file
+    file_url = models.FileField(upload_to='videos/')
+    # Optional thumbnail image
     thumbnail = models.ImageField(upload_to='thumbnails/', null=True, blank=True)
-    
-    duration_seconds = models.IntegerField(help_text="Thời lượng video (giây)")
-    
-    # Giá để mở khóa video này (ví dụ: 0.5 TC)
-    price_tc = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
-    
+    # Duration in seconds, used for analytics and UX cues
+    duration_seconds = models.IntegerField(help_text="Length of the video in seconds")
+    # Token cost to unlock this video
+    price_tc = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'))
+    # Soft-delete flag to hide content without losing ledger history
     is_active = models.BooleanField(default=True)
+    # Creation timestamp for ordering
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
 
-# ==========================================
-# 4. NHẬT KÝ GIAO DỊCH (LEDGER/TRANSACTIONS) - GHI ĐIỂM "SYSTEM THINKING"
-# ==========================================
+    def delete(self, *args, **kwargs):
+        """Soft-delete by toggling is_active instead of removing rows."""
+        self.is_active = False
+        self.save(update_fields=['is_active'])
+
+
 class Transaction(models.Model):
-    """
-    Sổ cái ghi chép mọi biến động số dư. Bắt buộc phải có để truy vết dòng tiền.
-    """
+    """Ledger entry capturing every balance mutation for auditing and rollback."""
+
     TX_TYPES = (
-        ('EARN_ADS', 'Nhận TC từ xem quảng cáo'),
-        ('SPEND_VIEW', 'Trả TC để xem video'),
-        ('EARN_CREATOR', 'Creator nhận TC từ người xem'),
-        ('DEPOSIT_VND', 'Nạp VND'),
-        ('WITHDRAW_VND', 'Rút VND'),
-    )
-    
-    STATUS_CHOICES = (
-        ('PENDING', 'Đang chờ xử lý'),
-        ('SUCCESS', 'Thành công'),
-        ('FAILED', 'Thất bại'),
+        ('EARN_ADS', 'Earn TC from ads'),
+        ('SPEND_VIEW', 'Spend TC to view'),
+        ('EARN_CREATOR', 'Creator earns TC from viewers'),
+        ('DEPOSIT_VND', 'Deposit VND'),
+        ('WITHDRAW_VND', 'Withdraw VND'),
     )
 
-    # Nếu hệ thống tặng tiền (ví dụ xem Ads), sender sẽ là NULL
-    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_tx')
-    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='received_tx')
-    
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+    )
+
+    # Sender may be null for system-generated credits
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_transactions')
+    # Receiver captures the beneficiary of the transaction
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='received_transactions')
+    # Business reason for the transaction
     tx_type = models.CharField(max_length=20, choices=TX_TYPES)
-    amount_tc = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # Token amount involved (TC)
+    amount_tc = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    # Fiat amount involved (VND)
     amount_vnd = models.DecimalField(max_digits=15, decimal_places=0, default=0)
-    
+    # Processing status for async flows
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='SUCCESS')
+    # Timestamp when the transaction was recorded
     timestamp = models.DateTimeField(auto_now_add=True)
-    
-    # Gắn với video nào (nếu có)
+    # Optional linkage to a video (e.g., purchases)
     reference_video = models.ForeignKey(Video, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.tx_type} | {self.amount_tc} TC | {self.status}"
 
-# ==========================================
-# 5. HỆ THỐNG THEO DÕI SỰ CHÚ Ý (PROOF OF ATTENTION)
-# ==========================================
+
 class WatchSession(models.Model):
-    """
-    Bảng này giải quyết bài toán cốt lõi: Làm sao biết User thực sự xem video?
-    Client (JS) sẽ gọi API ping server mỗi 10 giây để update 'watched_seconds'.
-    """
+    """Per-user, per-video watch session tracking unlock state and progress."""
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     video = models.ForeignKey(Video, on_delete=models.CASCADE)
-    
+    # Start of the session used for analytics
     start_time = models.DateTimeField(auto_now_add=True)
+    # Updated on every ping to detect drop-offs
     last_ping_time = models.DateTimeField(auto_now=True)
-    
+    # Total watched seconds accumulated via heartbeats
     watched_seconds = models.IntegerField(default=0)
-    is_unlocked = models.BooleanField(default=False, help_text="Đã trả TC để mở khóa chưa?")
-    
+    # Marks whether the viewer paid/unlocked the video
+    is_unlocked = models.BooleanField(default=False, help_text="True once TC payment is completed")
+
     class Meta:
-        # Một user chỉ có 1 session duy nhất cho 1 video
+        # Prevent duplicate sessions for the same user/video pair
         unique_together = ('user', 'video')
 
     def __str__(self):
-        return f"{self.user.username} xem {self.video.title} ({self.watched_seconds}s)"
-    
-# ... (Phần code hiện tại của bạn từ HỆ THỐNG NGƯỜI DÙNG đến HỆ THỐNG THEO DÕI SỰ CHÚ Ý) ...
+        return f"{self.user.username} watching {self.video.title} ({self.watched_seconds}s)"
 
-# ==========================================
-# 6. HỆ THỐNG PHÂN LOẠI & TỔ CHỨC NỘI DUNG (CATEGORY & COURSE)
-# ==========================================
+
 class Category(models.Model):
-    """Phân loại chủ đề cho Video/Khóa học"""
+    """Topic grouping used to organize videos and courses."""
+
     name = models.CharField(max_length=100, unique=True, verbose_name="Tên danh mục")
     description = models.TextField(blank=True, null=True, verbose_name="Mô tả danh mục")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -147,72 +140,65 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+
 class Course(models.Model):
-    """
-    Tập hợp nhiều Video thành một lộ trình có cấu trúc.
-    """
-    title = models.CharField(max_length=255, verbose_name="Tên khóa học")
+    """Structured collection of videos curated by a creator."""
+
+    title = models.CharField(max_length=255, verbose_name="Tên khóa học", db_index=True)
     description = models.TextField(verbose_name="Mô tả chi tiết")
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='courses')
+    # Optional category to group courses by topic
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='courses')
+    # Course owner/teacher (creator)
     instructor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='taught_courses')
-    
-    # Liên kết nhiều-nhiều với Video. 
-    # Mở rộng model Video hiện tại để nó có thể thuộc về một hoặc nhiều Course.
-    videos = models.ManyToManyField(Video, related_name='courses', blank=True) 
-    
-    # Giá mua đứt cả khóa học (giảm giá so với mua lẻ từng video)
-    bundle_price_tc = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Giá trọn bộ (TC)")
+    # Price for the full bundle in TC
+    bundle_price_tc = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Giá trọn bộ (TC)")
+    # Soft-delete flag to keep history while hiding from listings
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
 
+    def delete(self, *args, **kwargs):
+        """Soft-delete courses to preserve financial and content history."""
+        self.is_active = False
+        self.save(update_fields=['is_active'])
 
-# ==========================================
-# 7. HỆ THỐNG TƯƠNG TÁC XÃ HỘI (SOCIAL FEATURES)
-# ==========================================
+
 class CommentReview(models.Model):
-    """
-    Kết hợp Bình luận và Đánh giá (Rating).
-    """
+    """Combined comment and optional rating for a video."""
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='comments')
+    # Freeform feedback text
     content = models.TextField(verbose_name="Nội dung bình luận")
-    
-    # Đánh giá sao (1-5). Để null=True vì người dùng có thể chỉ comment chứ không rate.
+    # Discrete 1-5 star rating; nullable to allow comment-only feedback
     RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
     rating = models.IntegerField(choices=RATING_CHOICES, null=True, blank=True, verbose_name="Đánh giá sao")
-    
-    # Có thể thêm self-referential để làm tính năng "Reply comment" nếu muốn:
-    # parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
-    
+    # When the comment was created
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} bình luận trên {self.video.title}"
+        return f"{self.user.username} commented on {self.video.title}"
 
 
 class Follow(models.Model):
-    """
-    Lưu trữ quan hệ theo dõi giữa các User.
-    """
+    """Directed relationship showing one user following another."""
+
     follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name='following')
     following = models.ForeignKey(User, on_delete=models.CASCADE, related_name='followers')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Ràng buộc: Một người không thể follow người khác 2 lần
-        unique_together = ('follower', 'following') 
+        unique_together = ('follower', 'following')
 
     def __str__(self):
         return f"{self.follower.username} -> {self.following.username}"
 
 
 class Notification(models.Model):
-    """
-    Thông báo hệ thống (có video mới, có người follow, v.v.)
-    """
+    """User-targeted notification with optional redirect link."""
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     content = models.CharField(max_length=255, verbose_name="Nội dung thông báo")
     link = models.CharField(max_length=255, blank=True, null=True, verbose_name="Đường dẫn chuyển hướng")
@@ -224,15 +210,9 @@ class Notification(models.Model):
         return f"[{status}] Thông báo cho {self.user.username}"
 
 
-# ==========================================
-# 8. HỆ THỐNG PHÂN TÍCH DỮ LIỆU SÂU (ADVANCED ANALYTICS)
-# ==========================================
 class UserBehavior(models.Model):
-    """
-    Ghi nhận log hành vi chi tiết. Khác với WatchSession (dùng để ping time thật & mở khóa),
-    bảng này lưu vết dạng event log để chạy các mô hình thống kê, kinh tế lượng sau này.
-    Ví dụ: Phân tích các yếu tố ảnh hưởng đến tỷ lệ rời bỏ (drop-off rate).
-    """
+    """Event-level telemetry for playback interactions, separate from watch sessions."""
+
     EVENT_TYPES = (
         ('PLAY', 'Bắt đầu xem'),
         ('PAUSE', 'Tạm dừng'),
@@ -243,16 +223,27 @@ class UserBehavior(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='behavior_logs')
     video = models.ForeignKey(Video, on_delete=models.CASCADE)
-    
+    # Type of interaction captured for analytics
     event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
-    
-    # Thời điểm trong video (tính bằng giây) mà event xảy ra.
-    # Rất hữu ích để chạy mô hình hồi quy xem đoạn nào của video khiến người dùng thoát nhiều nhất.
-    video_timestamp_seconds = models.IntegerField(default=0, help_text="Vị trí thời gian trong video lúc xảy ra event")
-    
+    # Position in the video when the event occurred (seconds)
+    video_timestamp_seconds = models.IntegerField(default=0, help_text="Timestamp within the video when the event happened")
+    # Lightweight device fingerprint (user-agent or platform hint)
     device_info = models.CharField(max_length=150, blank=True, null=True, help_text="User Agent/Thiết bị")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Log: {self.user.username if self.user else 'Ẩn danh'} - {self.event_type} - {self.video.title}"
+        user_label = self.user.username if self.user else 'Ẩn danh'
+        return f"Log: {user_label} - {self.event_type} - {self.video.title}"
 
+
+class UserProfile(models.Model):
+    """Per-user profile storing role selection and survey answers for recommendations."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    # Chosen persona (e.g., student/lecturer/researcher)
+    role = models.CharField(max_length=50, blank=True, null=True)
+    # Flexible survey response storage for personalization
+    survey_answers = models.JSONField(default=list, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.email} - Vai trò: {self.role}"
