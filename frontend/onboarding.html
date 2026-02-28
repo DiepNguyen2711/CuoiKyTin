@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onboarding - HourSkill</title>
+  <link rel="stylesheet" href="tailwind.css">
+</head>
+<body>
+  <div class="progress-container">
+    <div id="progressBar" class="progress-bar"></div>
+  </div>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2>Bạn là ai?</h2>
+
+      <div class="auth-input-group">
+        <label for="role">Chọn vai trò</label>
+        <select id="role" onchange="selectRole()">
+          <option value="student">Học sinh / Sinh viên</option>
+          <option value="lecturer">Giảng viên</option>
+          <option value="researcher">Nhà nghiên cứu</option>
+        </select>
+      </div>
+
+      <div id="userStoryBox" style="margin-top: 20px;"></div>
+      <div id="surveyBox"></div>
+
+      <div class="auth-error" id="error" style="margin-top: 12px;"></div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const email = localStorage.getItem('email');
+    if (!token || !email) {
+      window.location.href = 'login.html';
+    }
+
+    function setProgress(value) {
+      document.getElementById('progressBar').style.width = `${value}%`;
+    }
+
+    function selectRole() {
+      const role = document.getElementById('role').value;
+      setProgress(40);
+
+      fetch('/api/select-role/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email, role })
+      }).catch(() => {
+        document.getElementById('error').innerText = 'Không thể cập nhật vai trò, vui lòng thử lại.';
+      });
+
+      renderUserStory(role);
+      renderSurvey(role);
+    }
+
+    function renderUserStory(role) {
+      const box = document.getElementById('userStoryBox');
+      let story = '';
+
+      if (role === 'student') {
+        story = `
+          <p><strong>User Story:</strong><br>
+          Là một học sinh/sinh viên, tôi muốn có một lộ trình học tập cá nhân hóa để có thể tăng thu nhập và cơ hội nghề nghiệp.</p>`;
+      }
+
+      if (role === 'lecturer') {
+        story = `
+          <p><strong>User Story:</strong><br>
+          Với tư cách là giảng viên, tôi muốn tạo ra những khóa học có sức ảnh hưởng lớn để thu hút thêm sinh viên và tăng thu nhập.</p>`;
+      }
+      
+      if (role === 'researcher') {
+        story = `
+          <p><strong>User Story:</strong><br>
+          Là một nhà nghiên cứu, tôi muốn có một công cụ AI hỗ trợ để tăng tốc quá trình nghiên cứu và đạt được nhiều công bố khoa học hơn.</p>`;
+      }
+
+      box.innerHTML = story;
+    }
+
+    function renderSurvey(role) {
+      const box = document.getElementById('surveyBox');
+      setProgress(40);
+      let questions = [];
+
+      if (role === 'student') {
+        questions = [
+          'Bạn muốn tăng thu nhập bao nhiêu % sau khóa học?',
+          'Bạn muốn đạt vị trí công việc nào?',
+          'Bạn có cần chứng chỉ quốc tế không?',
+          'Bạn có bao nhiêu giờ/tuần để đầu tư cho việc học?'
+        ];
+      }
+
+      if (role === 'lecturer') {
+        questions = [
+          'Bạn muốn tăng bao nhiêu học viên trong 6 tháng?',
+          'Bạn có muốn mở khóa học trả phí không?',
+          'Bạn muốn xây dựng thương hiệu cá nhân mạnh đến mức nào?',
+          'Bạn gặp khó khăn gì khi dạy online?'
+        ];
+      }
+      
+      if (role === 'researcher') {
+        questions = [
+          'Bạn đang nghiên cứu lĩnh vực nào?',
+          'Bạn cần AI hỗ trợ ở mức độ nào?',
+          'Mục tiêu công bố khoa học của bạn?',
+          'Bạn dành bao nhiêu giờ/tuần cho nghiên cứu?'
+        ];
+      }
+
+      box.innerHTML = '';
+
+      questions.forEach((q, index) => {
+        box.innerHTML += `
+          <div class="auth-input-group">
+            <label>${q}</label>
+            <input type="text" id="q${index}">
+          </div>
+        `;
+      });
+
+      box.innerHTML += `
+        <button class="auth-button" onclick="submitSurvey()">Hoàn tất</button>
+      `;
+    }
+
+    async function submitSurvey() {
+      const errorText = document.getElementById('error');
+      errorText.innerText = '';
+      const inputs = document.querySelectorAll('#surveyBox input');
+      setProgress(100);
+
+      const answers = Array.from(inputs).map(input => input.value.trim());
+
+      try {
+        const res = await fetch('/api/survey/', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ email, answers })
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          errorText.innerText = data.message || 'Lưu khảo sát thất bại, thử lại.';
+          setProgress(40);
+          return;
+        }
+
+        alert('Cập nhật hồ sơ thành công!');
+        window.location.href = 'main.html';
+      } catch (err) {
+        errorText.innerText = 'Lỗi kết nối mạng, vui lòng thử lại.';
+        setProgress(40);
+      }
+    }
+
+    // Khởi tạo mặc định
+    renderUserStory('student');
+    renderSurvey('student');
+  </script>
+</body>
+</html>
