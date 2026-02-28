@@ -212,7 +212,7 @@ def api_register(request):
 
     token = _issue_token(user)
 
-    return _json_success({'message': 'Đăng ký thành công! Bạn đã nhận được 5 TC vào ví.', 'token': token}, status=201)
+    return _json_success({'message': 'Đăng ký thành công!', 'token': token}, status=201)
 
 @csrf_exempt
 @require_POST
