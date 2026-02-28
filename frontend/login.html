@@ -164,6 +164,7 @@
         loginBtn.style.opacity = "0.7"; // Làm mờ nút đi một chút cho giống hiệu ứng đang xử lý
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         try {
           const res = await fetch("/api/login/", {
             method: "POST",
@@ -190,9 +191,18 @@
           loginBtn.style.opacity = "1";
 =======
 <<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
         if (res.ok) {
           localStorage.setItem("token", data.token);
           window.location.href = "/";
+=======
+        if (res.ok && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('username', data.username);
+          localStorage.setItem('email', email);
+          window.location.href = "main.html";
+>>>>>>> Stashed changes
         } else {
           alert(data.message);
 >>>>>>> Stashed changes
