@@ -236,7 +236,10 @@ def api_login(request):
         return _json_error('Sai mật khẩu! Vui lòng kiểm tra lại.')
 
     token = _issue_token(user)
-    return _json_success({'token': token})
+    return _json_success({
+        'token': token,
+        'username': user.username
+    })
 
 def main_view(request):
     """Serve main page if authenticated; otherwise redirect to login."""
