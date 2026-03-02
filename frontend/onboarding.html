@@ -152,9 +152,26 @@ async function submitSurvey() {
   window.onload = () => {
     selectRole();
   };
+  const inputs = document.querySelectorAll('#surveyBox input');
+    const finishBtn = document.getElementById('finishBtn');
 
+    function checkFormValid() {
+      const allFilled = Array.from(inputs).every(input => input.value.trim() !== '');
+
+      if (allFilled) {
+        finishBtn.disabled = false;
+        finishBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        finishBtn.disabled = true;
+        finishBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    // Lắng nghe khi người dùng nhập
+    inputs.forEach(input => {
+      input.addEventListener('input', checkFormValid);
+    });
 </script>
-
 
 </body>
 </html>
