@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tạo khóa học - HOURSKILLS</title>
+  <link rel="stylesheet" href="tailwind.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+  <div class="max-w-2xl mx-auto mt-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+    <h1 class="text-2xl font-bold mb-4 text-center">Tạo khóa học mới</h1>
+    <div id="errorMsg" class="text-red-500 mb-4"></div>
+
+    <form id="courseForm" method="POST" enctype="multipart/form-data" class="space-y-4">
+      <div>
+        <label class="block mb-1">Tên khóa học</label>
+        <input type="text" name="title" id="title" required
+               class="w-full border px-3 py-2 rounded" placeholder="Nhập tên khóa học">
+      </div>
+
+      <div>
+        <label class="block mb-1">Giá TC</label>
+        <input type="number" name="price_tc" id="price" required
+               class="w-full border px-3 py-2 rounded" placeholder="0.00" step="0.01" min="0">
+      </div>
+
+      <div>
+        <label class="block mb-1">Tải video</label>
+        <div class="flex items-center gap-3">
+          <label for="videoFile" class="cursor-pointer flex items-center gap-1 text-blue-500 hover:underline">
+            📤 Chọn tập tin
+          </label>
+          <span id="fileName" class="text-sm text-gray-600 truncate"></span>
+        </div>
+        <input type="file" accept="video/*" id="videoFile" name="video" required class="hidden">
+        <p class="text-sm text-gray-500 mt-1">Tải video từ máy tính (MP4, tối đa X phút)</p>
+      </div>
+
+      <button id="submitBtn" class="w-full px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tạo khóa học</button>
+    </form>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    const videoInput = document.getElementById('videoFile');
+    const fileNameSpan = document.getElementById('fileName');
+    videoInput.addEventListener('change', () => {
+      const f = videoInput.files[0];
+      fileNameSpan.innerText = f ? f.name : '';
+    });
+
+    document.getElementById('courseForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorMsg = document.getElementById('errorMsg');
+      const submitBtn = form.querySelector('button[type="submit"]');
+
+      const form = e.target;
+
+      // Trạng thái bắt đầu: Khóa nút & thông báo
+      submitBtn.disabled = true;
+      submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      const originalBtnText = submitBtn.innerText;
+      submitBtn.innerText = '🚀 Đang tải lên...';
+      errorMsg.innerText = '';
+
+      const formData = new FormData(form);
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/create-course/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          window.location.href = 'main.html';
+        } else {
+          errorMsg.innerText = data.message || 'Tạo khóa học thất bại';
+          resetBtn(submitBtn, originalBtnText);
+        }
+      } catch (err) {
+        errorMsg.innerText = 'Lỗi kết nối, thử lại sau.';
+        resetBtn(submitBtn, originalBtnText);
+      }
+    });
+
+// Hàm bổ trợ để trả lại trạng thái nút khi lỗi
+function resetBtn(btn, text) {
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    btn.innerText = text;
+}
+
+  </script>
+</body>
+</html>

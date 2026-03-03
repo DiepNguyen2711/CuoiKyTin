@@ -31,6 +31,11 @@
             </div>
 
             <div class="flex gap-3 items-center" id="userMenu">
+
+                <button class="p-2 rounded-full hover:bg-gray-700 transition relative">
+                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    🔔
+                </button>
                 
                 <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-700 transition focus:outline-none">
                     <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
@@ -87,7 +92,7 @@
                     <span class="w-2 h-8 bg-blue-500 rounded"></span> Khóa học nổi bật
                 </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="courseGrid">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="courseGrid">
                     <p class="text-gray-500" id="courseEmpty">Đang tải khóa học...</p>
                 </div>
             </section>
