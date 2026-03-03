@@ -37,4 +37,12 @@ urlpatterns = [
     path('api/reward-ads/', views.api_reward_ads, name='api_reward_ads'),
     # JSON: Log playback events for analytics
     path('api/log-behavior/', views.api_log_behavior, name='api_log_behavior'),
+    # Instructor channel detail showing their courses and follower count
+    path('api/channel/', views.api_channel_detail, name='api_channel_detail'),
+    # Create a course together with a video file upload
+    path('api/create-course/', views.api_create_course_with_video, name='api_create_course_with_video'),
+    # front-end page for uploading courses (non-API)
+    path('create-course/', views.create_course, name='create_course'),
+    # alias for follow toggle, kept for clarity
+    path('api/follow-toggle/', views.api_toggle_follow, name='api_toggle_follow'),
 ]
