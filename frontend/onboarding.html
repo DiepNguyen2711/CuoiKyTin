@@ -45,7 +45,7 @@
       const role = document.getElementById('role').value;
       setProgress(40);
 
-      fetch('/api/select-role/', {
+      fetch('http://localhost:8000/api/select-role/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,7 +151,7 @@
       const answers = Array.from(inputs).map(input => input.value.trim());
 
       try {
-        const res = await fetch('/api/survey/', {
+        const res = await fetch('http://localhost:8000/api/survey/', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',

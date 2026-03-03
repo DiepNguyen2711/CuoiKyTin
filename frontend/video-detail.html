@@ -61,7 +61,7 @@
 
     async function loadVideo() {
       try {
-        const res = await fetch(`/api/video/${videoId}/`, {
+        const res = await fetch(`http://localhost:8000/api/video/${videoId}/`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
