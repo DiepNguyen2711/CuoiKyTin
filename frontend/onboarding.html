@@ -23,11 +23,10 @@
           <option value="researcher">Nhà nghiên cứu</option>
         </select>
       </div>
-
-      <div id="userStoryBox" style="margin-top: 20px;"></div>
+<div id="userStoryBox" style="margin-top: 20px;"></div>
       <div id="surveyBox"></div>
 
-      <div class="auth-error" id="error" style="margin-top: 12px;"></div>
+      <div class="auth-error" id="error" style="margin-top: 12px; color: red;"></div>
     </div>
   </div>
 
@@ -66,21 +65,11 @@
       let story = '';
 
       if (role === 'student') {
-        story = `
-          <p><strong>User Story:</strong><br>
-          Là một học sinh/sinh viên, tôi muốn có một lộ trình học tập cá nhân hóa để có thể tăng thu nhập và cơ hội nghề nghiệp.</p>`;
-      }
-
-      if (role === 'lecturer') {
-        story = `
-          <p><strong>User Story:</strong><br>
-          Với tư cách là giảng viên, tôi muốn tạo ra những khóa học có sức ảnh hưởng lớn để thu hút thêm sinh viên và tăng thu nhập.</p>`;
-      }
-      
-      if (role === 'researcher') {
-        story = `
-          <p><strong>User Story:</strong><br>
-          Là một nhà nghiên cứu, tôi muốn có một công cụ AI hỗ trợ để tăng tốc quá trình nghiên cứu và đạt được nhiều công bố khoa học hơn.</p>`;
+        story = `<p><strong>User Story:</strong><br>Là một học sinh/sinh viên, tôi muốn có một lộ trình học tập cá nhân hóa để có thể tăng thu nhập và cơ hội nghề nghiệp.</p>`;
+      } else if (role === 'lecturer') {
+        story = `<p><strong>User Story:</strong><br>Với tư cách là giảng viên, tôi muốn tạo ra những khóa học có sức ảnh hưởng lớn để thu hút thêm sinh viên và tăng thu nhập.</p>`;
+      } else if (role === 'researcher') {
+        story = `<p><strong>User Story:</strong><br>Là một nhà nghiên cứu, tôi muốn có một công cụ AI hỗ trợ để tăng tốc quá trình nghiên cứu và đạt được nhiều công bố khoa học hơn.</p>`;
       }
 
       box.innerHTML = story;
@@ -98,18 +87,14 @@
           'Bạn có cần chứng chỉ quốc tế không?',
           'Bạn có bao nhiêu giờ/tuần để đầu tư cho việc học?'
         ];
-      }
-
-      if (role === 'lecturer') {
+      } else if (role === 'lecturer') {
         questions = [
           'Bạn muốn tăng bao nhiêu học viên trong 6 tháng?',
           'Bạn có muốn mở khóa học trả phí không?',
           'Bạn muốn xây dựng thương hiệu cá nhân mạnh đến mức nào?',
           'Bạn gặp khó khăn gì khi dạy online?'
         ];
-      }
-      
-      if (role === 'researcher') {
+      } else if (role === 'researcher') {
         questions = [
           'Bạn đang nghiên cứu lĩnh vực nào?',
           'Bạn cần AI hỗ trợ ở mức độ nào?',
@@ -129,9 +114,32 @@
         `;
       });
 
+      // Thêm ID cho nút và mặc định disable (làm mờ) nút bấm ---
       box.innerHTML += `
-        <button class="auth-button" onclick="submitSurvey()">Hoàn tất</button>
+        <button id="finishBtn" class="auth-button opacity-50 cursor-not-allowed" disabled onclick="submitSurvey()">Hoàn tất</button>
       `;
+
+      // --- TÍCH HỢP TỪ NHÁNH TRANG-WEB: Gắn sự kiện lắng nghe người dùng nhập liệu ---
+      const inputs = document.querySelectorAll('#surveyBox input');
+      inputs.forEach(input => {
+        input.addEventListener('input', checkFormValid);
+      });
+    }
+
+    // --- TÍCH HỢP TỪ NHÁNH TRANG-WEB: Hàm kiểm tra form ---
+    function checkFormValid() {
+      const inputs = document.querySelectorAll('#surveyBox input');
+      const finishBtn = document.getElementById('finishBtn');
+      
+      const allFilled = Array.from(inputs).every(input => input.value.trim() !== '');
+
+      if (allFilled) {
+        finishBtn.disabled = false;
+        finishBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        finishBtn.disabled = true;
+        finishBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
     }
 
     async function submitSurvey() {
@@ -147,7 +155,7 @@
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}` 
           },
           body: JSON.stringify({ email, answers })
         });
