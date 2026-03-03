@@ -177,8 +177,8 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
-
-
+    return render(request, 'login.html', {'form': form})
+  
 def create_course(request):
     """Render the frontend page where creators can upload a new course with video."""
     return render(request, 'create_course.html')
@@ -386,9 +386,7 @@ def api_get_courses(request):
 @require_POST
 def api_toggle_follow(request, creator_id=None):
     """API: Toggle follow/unfollow for a creator, blocking self-follow.
-
     Supports both JSON body (creator_id) and REST-style path parameter.
-
     The response now returns the boolean follow state and the current follower count
     to allow the frontend to update the UI without reloading.
     All database operations are wrapped to avoid unhandled exceptions.
@@ -656,14 +654,8 @@ def api_survey(request):
     except UserProfile.DoesNotExist:
         return _json_error('Người dùng chưa chọn vai trò (role) ở bước 1.', status=400)
     except Exception as exc:
-        return _json_error(str(exc), status=400)
-
+        return _json_error(str(exc), status=400
     return _json_success({'message': 'Lưu khảo sát thành công!'})
-
-
-# ---------------------------------------------------------------------------
-# New endpoints added per engineering instructions
-# ---------------------------------------------------------------------------
 
 @csrf_exempt
 @require_POST
