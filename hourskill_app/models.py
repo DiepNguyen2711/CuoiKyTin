@@ -50,6 +50,8 @@ class Video(models.Model):
     description = models.TextField(blank=True)
     # Stored media path for the video file
     file_url = models.FileField(upload_to='videos/')
+    # New field to keep the uploaded video file itself (future proofing + FormData API)
+    video_file = models.FileField(upload_to='videos/', null=True, blank=True)
     # Optional thumbnail image
     thumbnail = models.ImageField(upload_to='thumbnails/', null=True, blank=True)
     # Duration in seconds, used for analytics and UX cues

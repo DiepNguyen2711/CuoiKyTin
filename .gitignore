@@ -1,2 +1,13 @@
-db.sqlite3
-__pycache__/
+# Python bytecode (Các file rác bạn đang thấy)
+**/__pycache__/
+*.pyc
+
+# Môi trường ảo (nếu có)
+venv/
+env/
+
+# Database cục bộ
+*.sqlite3
+
+# Thư mục media/static upload (tùy dự án)
+media/
