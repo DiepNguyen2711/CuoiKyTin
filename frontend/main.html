@@ -48,6 +48,9 @@
                     </div>
                 </div>
                 
+                <button id="myProfileBtn" class="px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition font-medium shadow-sm mr-2">
+                    Trang cá nhân của tôi
+                </button>
                 <button id="logoutBtn" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium shadow-sm">
                     Đăng xuất
                 </button>
@@ -142,7 +145,14 @@
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
             localStorage.removeItem('token');
+            localStorage.removeItem('user_id');
             window.location.href = 'login.html';
+        });
+        document.getElementById('myProfileBtn').addEventListener('click', () => {
+            const me = localStorage.getItem('user_id');
+            if (me) {
+                window.location.href = `channel.html?id=${me}`;
+            }
         });
 
         async function loadCourses(searchText = '') {
@@ -175,11 +185,21 @@
                 courses.forEach(course => {
                     const card = document.createElement('div');
                     card.className = 'bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card';
+                    // derive instructor id safely from whatever payload property exists
+                    let instructorId = course.instructor__id || course.instructor_id || (course.instructor && course.instructor.id) || course.instructor;
+                    let instructorName = course.instructor__username || course.instructor?.username || 'GV';
+                    // construct avatar plus name link
+                    let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(instructorName)}`;
+                    let nameLink = instructorName;
+                    if (instructorId) {
+                        nameLink = `<a href="channel.html?id=${instructorId}" class="text-blue-500 hover:underline">${instructorName}</a>`;
+                    }
+                    let instructorHtmlFormatted = `<img src="${avatarUrl}" class="w-6 h-6 rounded-full inline-block mr-2" />${nameLink}`;
                     card.innerHTML = `
                         <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">${course.title}</h3>
                         <p class="text-gray-600 dark:text-gray-400 mb-4">${course.category__name || 'Chưa phân loại'}</p>
                         <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
-                            <span>GV: ${course.instructor__username}</span>
+                            <span>GV: ${instructorHtmlFormatted}</span>
                             <span>Giá gói: ${course.bundle_price_tc} TC</span>
                         </div>
                         <a class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-block" href="video-detail.html?id=${course.id}">Xem chi tiết</a>
