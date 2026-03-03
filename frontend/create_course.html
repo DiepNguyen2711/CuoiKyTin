@@ -56,9 +56,17 @@
     document.getElementById('courseForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const errorMsg = document.getElementById('errorMsg');
-      errorMsg.innerText = '';
+      const submitBtn = form.querySelector('button[type="submit"]');
 
       const form = e.target;
+
+      // Trạng thái bắt đầu: Khóa nút & thông báo
+      submitBtn.disabled = true;
+      submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      const originalBtnText = submitBtn.innerText;
+      submitBtn.innerText = '🚀 Đang tải lên...';
+      errorMsg.innerText = '';
+
       const formData = new FormData(form);
 
       try {
@@ -71,15 +79,26 @@
         });
 
         const data = await res.json();
+
         if (res.ok && data.success) {
           window.location.href = 'main.html';
         } else {
           errorMsg.innerText = data.message || 'Tạo khóa học thất bại';
+          resetBtn(submitBtn, originalBtnText);
         }
       } catch (err) {
         errorMsg.innerText = 'Lỗi kết nối, thử lại sau.';
+        resetBtn(submitBtn, originalBtnText);
       }
     });
+
+// Hàm bổ trợ để trả lại trạng thái nút khi lỗi
+function resetBtn(btn, text) {
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    btn.innerText = text;
+}
+
   </script>
 </body>
 </html>
