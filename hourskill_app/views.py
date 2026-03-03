@@ -176,7 +176,19 @@ def login_view(request):
             return _json_success({'token': token})
     else:
         form = AuthenticationForm()
+<<<<<<< Updated upstream
     return render(request, 'login.html', {'form': form})
+=======
+<<<<<<< Updated upstream
+    return render(request, 'login.html', {'form': form})
+=======
+    return render(request, 'login.html', {'form': form})
+
+
+def create_course(request):
+    """Render the frontend page where creators can upload a new course with video."""
+    return render(request, 'create_course.html')
+>>>>>>> Stashed changes
 
 @csrf_exempt
 @require_POST
@@ -238,7 +250,12 @@ def api_login(request):
     token = _issue_token(user)
     return _json_success({
         'token': token,
+<<<<<<< Updated upstream
         'username': user.username
+=======
+        'username': user.username,
+        'user_id': user.id,
+>>>>>>> Stashed changes
     })
 
 def main_view(request):
@@ -369,6 +386,11 @@ def api_get_courses(request):
             'bundle_price_tc',
             'category__name',
             'instructor__username',
+<<<<<<< Updated upstream
+=======
+            # include potential instructor id to support safe channel links later
+            'instructor__id',
+>>>>>>> Stashed changes
         )
     )
 
@@ -380,6 +402,13 @@ def api_toggle_follow(request, creator_id=None):
     """API: Toggle follow/unfollow for a creator, blocking self-follow.
 
     Supports both JSON body (creator_id) and REST-style path parameter.
+<<<<<<< Updated upstream
+=======
+
+    The response now returns the boolean follow state and the current follower count
+    to allow the frontend to update the UI without reloading.
+    All database operations are wrapped to avoid unhandled exceptions.
+>>>>>>> Stashed changes
     """
     user, auth_error = _require_auth(request)
     if auth_error:
@@ -404,6 +433,7 @@ def api_toggle_follow(request, creator_id=None):
     if user == creator:
         return _json_error('Bạn không thể tự follow chính mình!')
 
+<<<<<<< Updated upstream
     # A single record represents follow; presence => following
     follow_record = Follow.objects.filter(follower=user, following=creator).first()
     if follow_record:
@@ -414,6 +444,23 @@ def api_toggle_follow(request, creator_id=None):
         action = 'followed'
 
     return _json_success({'action': action})
+=======
+    try:
+        # A single record represents follow; presence => following
+        follow_record = Follow.objects.filter(follower=user, following=creator).first()
+        if follow_record:
+            follow_record.delete()
+            is_following = False
+        else:
+            Follow.objects.create(follower=user, following=creator)
+            is_following = True
+
+        followers_count = Follow.objects.filter(following=creator).count()
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    return _json_success({'is_following': is_following, 'followers_count': followers_count})
+>>>>>>> Stashed changes
 
 @csrf_exempt
 @require_POST
@@ -641,4 +688,115 @@ def api_survey(request):
     except Exception as exc:
         return _json_error(str(exc), status=400)
 
+<<<<<<< Updated upstream
     return _json_success({'message': 'Lưu khảo sát thành công!'})
+=======
+    return _json_success({'message': 'Lưu khảo sát thành công!'})
+
+@csrf_exempt
+@require_POST
+def api_create_course_with_video(request):
+    """API: Create a new course along with a video upload in one shot.
+
+    Expects a multipart/form-data POST with fields:
+    - title
+    - price_tc
+    - video (the file field name)
+
+    The newly created course is owned by request.user and a Video linked to
+    that course is also created.  Returns {"success": true} on success.
+    """
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    title = request.POST.get('title')
+    price_tc = request.POST.get('price_tc')
+    video_file = request.FILES.get('video')
+
+    if not title or price_tc is None or not video_file:
+        return _json_error('Thiếu dữ liệu cần thiết!', status=400)
+
+    try:
+        price_tc = Decimal(price_tc)
+    except Exception:
+        return _json_error('Giá TC không hợp lệ!', status=400)
+
+    try:
+        with transaction.atomic():
+            course = Course.objects.create(
+                title=title,
+                bundle_price_tc=price_tc,
+                instructor=user,
+            )
+            Video.objects.create(
+                title=title,
+                creator=user,
+                course=course,
+                file_url=video_file,
+                video_file=video_file,
+            )
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    return _json_success({'success': True})
+
+
+@require_GET
+def api_channel_detail(request):
+    """API: Return information about a creator's channel.
+
+    Query param 'id' must specify the user id of the channel owner.
+    Response includes the owner's active courses and follower count.
+    """
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    owner_id = request.GET.get('id')
+    if not owner_id:
+        return _json_error('Thiếu id kênh!', status=400)
+
+    try:
+        owner = User.objects.get(id=owner_id)
+    except User.DoesNotExist:
+        return _json_error('Người dùng không tồn tại!', status=404)
+
+    # gather courses for owner
+    courses = list(
+        Course.objects.filter(instructor=owner, is_active=True).values(
+            'id', 'title', 'bundle_price_tc'
+        )
+    )
+    followers_count = Follow.objects.filter(following=owner).count()
+
+    # also indicate whether the requesting user already follows this owner
+    is_following = False
+    if user:
+        is_following = Follow.objects.filter(follower=user, following=owner).exists()
+
+    # collect videos created by owner (useful for channel display)
+    videos = []
+    try:
+        vids = Video.objects.filter(creator=owner, is_active=True)
+        for v in vids:
+            videos.append({
+                'id': v.id,
+                'title': v.title,
+                'thumbnail': _safe_file_url(v.thumbnail) if v.thumbnail else '',
+                'duration_seconds': v.duration_seconds,
+                'video_url': _safe_file_url(v.file_url) if v.file_url else '',
+            })
+    except Exception:
+        # on any error, fall back to empty list
+        videos = []
+
+    return _json_success({
+        'owner': {'id': owner.id, 'username': owner.username},
+        'courses': courses,
+        'followers_count': followers_count,
+        'is_following': is_following,
+        'videos': videos,
+    })
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
