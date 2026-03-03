@@ -176,19 +176,12 @@ def login_view(request):
             return _json_success({'token': token})
     else:
         form = AuthenticationForm()
-<<<<<<< Updated upstream
     return render(request, 'login.html', {'form': form})
-=======
-<<<<<<< Updated upstream
     return render(request, 'login.html', {'form': form})
-=======
-    return render(request, 'login.html', {'form': form})
-
-
+  
 def create_course(request):
     """Render the frontend page where creators can upload a new course with video."""
     return render(request, 'create_course.html')
->>>>>>> Stashed changes
 
 @csrf_exempt
 @require_POST
@@ -250,12 +243,8 @@ def api_login(request):
     token = _issue_token(user)
     return _json_success({
         'token': token,
-<<<<<<< Updated upstream
-        'username': user.username
-=======
         'username': user.username,
         'user_id': user.id,
->>>>>>> Stashed changes
     })
 
 def main_view(request):
@@ -386,11 +375,8 @@ def api_get_courses(request):
             'bundle_price_tc',
             'category__name',
             'instructor__username',
-<<<<<<< Updated upstream
-=======
             # include potential instructor id to support safe channel links later
             'instructor__id',
->>>>>>> Stashed changes
         )
     )
 
@@ -400,15 +386,10 @@ def api_get_courses(request):
 @require_POST
 def api_toggle_follow(request, creator_id=None):
     """API: Toggle follow/unfollow for a creator, blocking self-follow.
-
     Supports both JSON body (creator_id) and REST-style path parameter.
-<<<<<<< Updated upstream
-=======
-
     The response now returns the boolean follow state and the current follower count
     to allow the frontend to update the UI without reloading.
     All database operations are wrapped to avoid unhandled exceptions.
->>>>>>> Stashed changes
     """
     user, auth_error = _require_auth(request)
     if auth_error:
@@ -433,18 +414,6 @@ def api_toggle_follow(request, creator_id=None):
     if user == creator:
         return _json_error('Bạn không thể tự follow chính mình!')
 
-<<<<<<< Updated upstream
-    # A single record represents follow; presence => following
-    follow_record = Follow.objects.filter(follower=user, following=creator).first()
-    if follow_record:
-        follow_record.delete()
-        action = 'unfollowed'
-    else:
-        Follow.objects.create(follower=user, following=creator)
-        action = 'followed'
-
-    return _json_success({'action': action})
-=======
     try:
         # A single record represents follow; presence => following
         follow_record = Follow.objects.filter(follower=user, following=creator).first()
@@ -460,7 +429,6 @@ def api_toggle_follow(request, creator_id=None):
         return _json_error(str(exc), status=500)
 
     return _json_success({'is_following': is_following, 'followers_count': followers_count})
->>>>>>> Stashed changes
 
 @csrf_exempt
 @require_POST
@@ -686,11 +654,7 @@ def api_survey(request):
     except UserProfile.DoesNotExist:
         return _json_error('Người dùng chưa chọn vai trò (role) ở bước 1.', status=400)
     except Exception as exc:
-        return _json_error(str(exc), status=400)
-
-<<<<<<< Updated upstream
-    return _json_success({'message': 'Lưu khảo sát thành công!'})
-=======
+        return _json_error(str(exc), status=400
     return _json_success({'message': 'Lưu khảo sát thành công!'})
 
 @csrf_exempt
@@ -798,5 +762,3 @@ def api_channel_detail(request):
         'is_following': is_following,
         'videos': videos,
     })
->>>>>>> Stashed changes
->>>>>>> Stashed changes
