@@ -662,7 +662,7 @@ def api_survey(request):
             profile.save(update_fields=['role', 'survey_answers'])
             
     except Exception as exc:
-        return _json_error(str(exc), status=400
+        return _json_error(str(exc), status=400)
     return _json_success({'message': 'Lưu khảo sát thành công!'})
 
 @csrf_exempt
