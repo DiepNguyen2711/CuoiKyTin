@@ -120,22 +120,19 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
+AUTH_USER_MODEL = 'hourskill_app.User'
+STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [
     BASE_DIR / 'frontend',
 ]
-
-AUTH_USER_MODEL = 'hourskill_app.User'
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'authorization',
 ]
 
-# Đường dẫn URL để truy cập file trên web (ví dụ: localhost:8000/media/video.mp4)
+# Đường dẫn URL để truy cập file trên web
 MEDIA_URL = '/media/'
-
 # Thư mục vật lý trên máy tính để lưu file
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
