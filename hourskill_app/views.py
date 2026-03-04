@@ -631,7 +631,7 @@ def api_select_role(request):
 @csrf_exempt
 @require_POST
 def api_survey(request):
-    """API: Store survey answers for the current user; depends on prior role selection."""
+    """API: Lưu câu trả lời khảo sát; tạo Profile nếu chưa có dựa trên role gửi lên."""
     try:
         data = _parse_json_body(request)
     except ValueError as exc:
@@ -646,15 +646,23 @@ def api_survey(request):
             return auth_error
 
     answers = data.get('answers')
+    role = data.get('role')
 
     try:
-        profile = UserProfile.objects.get(user=user)
-        profile.survey_answers = answers  # Persist raw answer list for later recommendations
-        profile.save(update_fields=['survey_answers'])
-    except UserProfile.DoesNotExist:
-        return _json_error('Người dùng chưa chọn vai trò (role) ở bước 1.', status=400)
+        profile, created = UserProfile.objects.update_or_create(
+            user=user,
+            defaults={
+                'role': role if role else 'student', 
+                'survey_answers': answers
+            }
+        )
+        
+        if not created and role:
+            profile.role = role
+            profile.save(update_fields=['role', 'survey_answers'])
+            
     except Exception as exc:
-        return _json_error(str(exc), status=400)
+        return _json_error(str(exc), status=400
     return _json_success({'message': 'Lưu khảo sát thành công!'})
 
 @csrf_exempt
