@@ -1,138 +1,77 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kênh học viên - HOURSKILLS</title>
-  <link rel="stylesheet" href="tailwind.css">
+  <meta charset="UTF-8" />
+  <title>Kênh Creator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f7fb;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+    .follow-btn {
+      margin-top: 8px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      background: #4f46e5;
+      color: white;
+    }
+    .followed {
+      background: #9ca3af;
+    }
+    .course {
+      border: 1px solid #eee;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+  </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
-  <div class="max-w-3xl mx-auto mt-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-    <div class="flex items-center gap-4 mb-4">
-      <div class="w-16 h-16 rounded-full bg-gray-200 overflow-hidden">
-        <img id="ownerAvatar" src="" alt="avatar" class="w-full h-full object-cover" />
-      </div>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="avatar" id="avatar">?</div>
       <div>
-        <h1 id="channelTitle" class="text-2xl font-bold leading-snug">Kênh của giáo viên</h1>
-        <p class="text-sm text-gray-600">Số người theo dõi: <span id="followersCount">0</span></p>
-      </div>
-      <div class="ml-auto">
-        <button id="actionBtn" class="px-5 py-2 rounded"></button>
+        <h2 id="username">Đang tải...</h2>
+        <p>
+          <span id="followers">0</span> người theo dõi
+        </p>
+        <button id="followBtn" class="follow-btn">Theo dõi</button>
       </div>
     </div>
 
-    <div id="courseList">
-      <!-- Danh sách khóa học / video sẽ render ở đây -->
-    </div>
+    <hr style="margin: 24px 0" />
+
+    <h3>Khóa học</h3>
+    <div id="courseList"></div>
   </div>
 
-  <script>
-    const token = localStorage.getItem('token');
-    if (!token) {
-      window.location.href = 'login.html';
-    }
-
-    let myId = localStorage.getItem('user_id');
-    let params = new URLSearchParams(window.location.search);
-    let viewId = params.get('id');
-    if (viewId === 'me' || !viewId || viewId === 'undefined') {
-      viewId = myId;
-    }
-
-    // state
-    let isFollowing = false;
-    let followersCount = 0;
-
-    // fetch channel details and populate
-    async function loadChannel() {
-      try {
-        const res = await fetch(`http://127.0.0.1:8000/api/channel/?id=${viewId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          alert(data.message || 'Không tải được kênh.');
-          return;
-        }
-
-        if (data.owner && data.owner.username) {
-          document.getElementById('channelTitle').innerText = `Kênh của ${data.owner.username}`;
-          document.getElementById('ownerAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.owner.username)}`;
-        }
-
-        followersCount = data.followers_count || 0;
-        document.getElementById('followersCount').innerText = followersCount;
-
-        const list = document.getElementById('courseList');
-        list.innerHTML = '';
-        if (data.videos && data.videos.length) {
-          // render videos as grid of cards
-          list.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 mt-6';
-          data.videos.forEach(v => {
-            const div = document.createElement('div');
-            div.className = 'bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow';
-            const media = v.video_url
-              ? `<video src="${v.video_url}" muted autoplay loop class="w-full h-40 object-cover rounded mb-2"></video>`
-              : (v.thumbnail ? `<img src="${v.thumbnail}" class="w-full h-40 object-cover rounded mb-2" />` : '');
-            const mins = Math.floor((v.duration_seconds || 0) / 60);
-            const secs = (v.duration_seconds || 0) % 60;
-            const dur = v.duration_seconds != null ? `${mins}m ${secs}s` : '';
-            div.innerHTML = `
-              ${media}
-              <h3 class="font-semibold text-lg mb-1">${v.title}</h3>
-              ${dur ? `<p class="text-sm text-gray-500">${dur}</p>` : ''}
-            `;
-            list.appendChild(div);
-          });
-        } else {
-          list.className = '';
-          list.innerHTML = '<p class="text-gray-500">Chưa có video nào</p>';
-        }
-
-        // if API returns is_following, use it to set state
-        isFollowing = !!data.is_following;
-        renderActionButton();
-      } catch (err) {
-        alert('Lỗi tải kênh');
-      }
-    }
-
-    function renderActionButton() {
-      const btn = document.getElementById('actionBtn');
-      if (myId && viewId && myId.toString() === viewId.toString()) {
-        btn.innerText = '➕ Tạo khóa học';
-        btn.className = 'px-5 py-2 bg-green-500 text-white rounded hover:bg-green-600';
-        btn.onclick = () => { window.location.href = 'create_course.html'; };
-      } else {
-        btn.innerText = isFollowing ? 'Đã theo dõi' : 'Theo dõi';
-        btn.className = isFollowing
-          ? 'px-5 py-2 bg-gray-300 rounded'
-          : 'px-5 py-2 bg-blue-500 text-white rounded hover:bg-blue-600';
-        btn.onclick = async () => {
-          try {
-            const res = await fetch('http://127.0.0.1:8000/api/follow-toggle/', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ creator_id: viewId })
-            });
-            const j = await res.json();
-            if (res.ok) {
-              isFollowing = j.is_following;
-              followersCount = j.followers_count;
-              document.getElementById('followersCount').innerText = followersCount;
-              renderActionButton();
-            }
-          } catch (e) {
-            console.warn('follow toggle failed', e);
-          }
-        };
-      }
-    }
-
-    loadChannel();
-  </script>
+  <script src="channel.js"></script>
 </body>
 </html>
