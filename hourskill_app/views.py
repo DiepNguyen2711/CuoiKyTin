@@ -654,7 +654,7 @@ def api_survey(request):
     except UserProfile.DoesNotExist:
         return _json_error('Người dùng chưa chọn vai trò (role) ở bước 1.', status=400)
     except Exception as exc:
-        return _json_error(str(exc), status=400
+        return _json_error(str(exc), status=400)
     return _json_success({'message': 'Lưu khảo sát thành công!'})
 
 @csrf_exempt
@@ -699,11 +699,15 @@ def api_create_course_with_video(request):
                 course=course,
                 file_url=video_file,
                 video_file=video_file,
+                duration_seconds=0,
             )
     except Exception as exc:
         return _json_error(str(exc), status=500)
 
-    return _json_success({'success': True})
+    return _json_success({
+    'course_id': course.id,
+    'message': 'Tạo khóa học thành công'
+})
 
 
 @require_GET
