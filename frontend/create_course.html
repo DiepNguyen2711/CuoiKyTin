@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tạo khóa học - HOURSKILLS</title>
+  <link rel="stylesheet" href="tailwind.css" />
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-6 rounded shadow w-full max-w-lg">
+    <h1 class="text-2xl font-bold mb-4 text-center">Tạo khóa học mới</h1>
+
+    <p id="errorMsg" class="text-red-500 mb-3"></p>
+
+    <form id="courseForm" class="space-y-4">
+      <!-- Tên khóa học -->
+      <div>
+        <label class="block mb-1">Tên khóa học</label>
+        <input
+          type="text"
+          name="title"
+          required
+          class="w-full border px-3 py-2 rounded"
+          placeholder="Nhập tên khóa học"
+        />
+      </div>
+
+      <!-- Giá TC -->
+      <div>
+        <label class="block mb-1">Giá (TC)</label>
+        <input
+          type="number"
+          name="price_tc"
+          required
+          min="0"
+          class="w-full border px-3 py-2 rounded"
+          placeholder="Ví dụ: 50"
+        />
+      </div>
+
+      <!-- Upload video -->
+      <div>
+        <label class="block mb-1">Video khóa học</label>
+        <input
+          type="file"
+          name="video"
+          accept="video/*"
+          required
+          class="w-full"
+        />
+        <p class="text-sm text-gray-500 mt-1">
+          Chỉ 1 video (MP4)
+        </p>
+      </div>
+
+      <!-- Nút submit -->
+      <button
+        type="submit"
+        id="submitBtn"
+        class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+      >
+        Tạo khóa học
+      </button>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('courseForm');
+    const errorMsg = document.getElementById('errorMsg');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      errorMsg.innerText = '';
+      submitBtn.disabled = true;
+      submitBtn.innerText = '⏳ Đang tải lên...';
+
+      const formData = new FormData(form);
+
+      try {
+        const token = localStorage.getItem("token");
+
+if (!token) {
+  errorMsg.innerText = "Bạn chưa đăng nhập!";
+  submitBtn.disabled = false;
+  submitBtn.innerText = 'Tạo khóa học';
+  return;
+}
+
+const res = await fetch('http://127.0.0.1:8000/api/create-course/', {
+  method: 'POST',
+  headers: {
+    "Authorization": "Bearer " + token
+  },
+  body: formData
+});
+
+        const data = await res.json();
+
+        if (res.ok && data.course_id) {
+          // 👉 chuyển sang trang xem video
+          window.location.href =
+            `video-detail.html?course_id=${data.course_id}`;
+        } else {
+          errorMsg.innerText =
+            data.message || 'Tạo khóa học thất bại';
+        }
+      } catch (err) {
+        errorMsg.innerText = 'Không kết nối được backend';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Tạo khóa học';
+      }
+    });
+  </script>
+
+</body>
+</html>
