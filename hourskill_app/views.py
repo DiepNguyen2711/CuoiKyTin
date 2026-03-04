@@ -707,11 +707,15 @@ def api_create_course_with_video(request):
                 course=course,
                 file_url=video_file,
                 video_file=video_file,
+                duration_seconds=0,
             )
     except Exception as exc:
         return _json_error(str(exc), status=500)
 
-    return _json_success({'success': True})
+    return _json_success({
+    'course_id': course.id,
+    'message': 'Tạo khóa học thành công'
+})
 
 
 @require_GET
