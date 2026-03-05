@@ -91,9 +91,13 @@ def _get_auth_user(request):
         return None
 
 
-def _safe_file_url(file_field):
-    """Return the served URL for a file field when available."""
+def _safe_file_url(request, file_field):
+    """Return full URL for video file."""
     try:
+        if not file_field:
+            return ''
+        if request:
+            return request.build_absolute_uri(file_field.url)
         return file_field.url
     except Exception:
         return ''
@@ -101,35 +105,53 @@ def _safe_file_url(file_field):
 
 def _process_video_purchase(user, video):
     """Unlock a video by moving TC between wallets and marking the session unlocked."""
+
     session, _ = WatchSession.objects.get_or_create(user=user, video=video)
+
     if session.is_unlocked:
-        return None, _json_error('Bạn đã mua video này rồi!')
-
-    price = video.price_tc
-    user_wallet = None
-
-    # Free videos unlock without touching wallets
-    if price == 0:
-        session.is_unlocked = True
-        session.save(update_fields=['is_unlocked'])
+        video_url = _safe_file_url(None, video.file_url)
         user_wallet = Wallet.objects.filter(user=user).first()
         remaining = user_wallet.balance_tc if user_wallet else Decimal('0.00')
-        video_url = _safe_file_url(video.file_url)
-        return {'remaining_tc': remaining, 'video_url': video_url, 'videoUrl': video_url}, None
+
+        return {
+            'remaining_tc': remaining,
+            'video_url': video_url,
+            'videoUrl': video_url,
+            'message': 'Video đã được mở khóa trước đó'
+        }, None
+
+    price = video.price_tc
+
+    # video miễn phí
+    if price == 0:
+        session.is_unlocked = True
+        session.save()
+
+        user_wallet = Wallet.objects.filter(user=user).first()
+        remaining = user_wallet.balance_tc if user_wallet else Decimal('0.00')
+
+        video_url = _safe_file_url(None, video.file_url)
+
+        return {
+            'remaining_tc': remaining,
+            'video_url': video_url,
+            'videoUrl': video_url
+        }, None
 
     try:
         with transaction.atomic():
-            user_wallet = _lock_wallet(user)
-            creator_wallet = _lock_wallet(video.creator)
 
-            if user_wallet.balance_tc < price:
-                return None, _json_error('Số dư TC không đủ. Vui lòng nạp thêm!')
+            buyer_wallet = Wallet.objects.select_for_update().get(user=user)
+            creator_wallet = Wallet.objects.select_for_update().get(user=video.creator)
 
-            user_wallet.balance_tc -= price
+            if buyer_wallet.balance_tc < price:
+                return None, _json_error('Số dư TC không đủ!')
+
+            buyer_wallet.balance_tc -= price
             creator_wallet.balance_tc += price
 
-            user_wallet.save(update_fields=['balance_tc', 'updated_at'])
-            creator_wallet.save(update_fields=['balance_tc', 'updated_at'])
+            buyer_wallet.save()
+            creator_wallet.save()
 
             Transaction.objects.create(
                 sender=user,
@@ -137,21 +159,21 @@ def _process_video_purchase(user, video):
                 tx_type='SPEND_VIEW',
                 amount_tc=price,
                 reference_video=video,
-                status='SUCCESS',
+                status='SUCCESS'
             )
 
             session.is_unlocked = True
-            session.save(update_fields=['is_unlocked'])
-    except Wallet.DoesNotExist:
-        return None, _json_error('Ví không tồn tại. Vui lòng liên hệ hỗ trợ.', status=500)
-    except Exception as exc:
-        return None, _json_error(str(exc), status=500)
+            session.save()
 
-    video_url = _safe_file_url(video.file_url)
+    except Exception as e:
+        return None, _json_error(str(e), status=500)
+
+    video_url = _safe_file_url(None, video.file_url)
+
     return {
-        'remaining_tc': user_wallet.balance_tc,
+        'remaining_tc': buyer_wallet.balance_tc,
         'video_url': video_url,
-        'videoUrl': video_url,
+        'videoUrl': video_url
     }, None
 
 def register_view(request):
@@ -332,7 +354,7 @@ def api_get_video_detail(request, video_id):
         'description': video.description,
         'locked': locked,
         'requiredTC': float(video.price_tc),
-        'videoUrl': None if locked else _safe_file_url(video.file_url),
+        'videoUrl': None if locked else _safe_file_url(request, video.file_url),
         'watchSessionId': session.id,
         'creator': {
             'id': video.creator.id,
@@ -360,9 +382,9 @@ def api_unlock_video(request, video_id):
     payload, error = _process_video_purchase(user, video)
     if error:
         return error
-
-    return _json_success({'message': 'Mở khóa video thành công!', **payload})
-
+    if payload.get("video_url"):
+        payload["videoUrl"] = request.build_absolute_uri(payload["video_url"])
+        return _json_success({'message': 'Mở khóa video thành công!', **payload})
 @require_GET
 def api_get_courses(request):
     """API: Return active courses and categories for catalog display."""
