@@ -269,6 +269,28 @@ def api_login(request):
         'user_id': user.id,
     })
 
+@csrf_exempt
+@require_GET
+def api_get_wallet(request):
+    """API: Get wallet balance for the authenticated user."""
+    user = _get_auth_user(request)
+    if not user:
+        return _json_error('Unauthorized', status=401)
+    
+    try:
+        wallet = Wallet.objects.get(user=user)
+        return _json_success({
+            'balance_tc': float(wallet.balance_tc),
+            'balance_vnd': float(wallet.balance_vnd),
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+        })
+    except Wallet.DoesNotExist:
+        return _json_error('Wallet not found', status=404)
+    except Exception as e:
+        return _json_error(str(e), status=500)
+
 def main_view(request):
     """Serve main page if authenticated; otherwise redirect to login."""
     return _json_error('This endpoint is deprecated in API mode.', status=410)
