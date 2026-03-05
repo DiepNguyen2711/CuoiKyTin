@@ -1,10 +1,18 @@
+from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import User, Wallet 
+
+from .models import Wallet
+
+
+User = get_user_model()
+
 
 @receiver(post_save, sender=User)
 def create_user_wallet(sender, instance, created, **kwargs):
-    # Biến 'created' sẽ mang giá trị True nếu đây là User mới được đăng ký
+    """Auto-provision a wallet for every newly created user."""
+
     if created:
-        # Tự động tạo Ví nối với User này và nạp sẵn 5 TC
-        Wallet.objects.create(user=instance, balance=5)
+        # Wallet default adds signup bonus via model default values
+        Wallet.objects.create(user=instance)
+        
