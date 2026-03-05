@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('hourskill_app', '0002_alter_video_duration_seconds'),
+        ('hourskill_app', '0003_merge_20260305_0139'),
     ]
 
     operations = [
