@@ -147,20 +147,12 @@
       errorText.innerText = '';
       const inputs = document.querySelectorAll('#surveyBox input');
       setProgress(100);
-<<<<<<< Updated upstream
-
-=======
     
->>>>>>> Stashed changes
       const roleElement = document.getElementById('role');
       const roleValue = roleElement ? roleElement.value : '';
 
       setProgress(100);
-<<<<<<< Updated upstream
-
-=======
     
->>>>>>> Stashed changes
       const answers = Array.from(inputs).map(input => input.value.trim());
 
       try {
@@ -169,11 +161,7 @@
           headers: { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` 
-<<<<<<< Updated upstream
-          },
-=======
       },
->>>>>>> Stashed changes
           body: JSON.stringify({ 
             email: email, 
             role: roleValue, 

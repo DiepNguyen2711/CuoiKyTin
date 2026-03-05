@@ -135,6 +135,7 @@
           registerBtn.style.opacity = '1';
         }
       } catch (error) {
+        console.error(error);
         errorText.innerText = 'Lỗi kết nối mạng, vui lòng kiểm tra lại!';
         registerBtn.innerText = 'Đăng ký';
         registerBtn.disabled = false;
