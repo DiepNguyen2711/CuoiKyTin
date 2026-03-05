@@ -10,7 +10,9 @@ urlpatterns = [
     path('api/register/', views.api_register, name='api_register'),
     # JSON: Authenticate user via email/password
     path('api/login/', views.api_login, name='api_login'),
-    # JSON: Heartbeat to track watch progress
+    path('api/wallet/', views.api_get_wallet, name='api_get_wallet'),
+    path('api/survey/', views.api_survey, name='survey'),
+    path('api/select-role/', views.api_select_role, name='select-role'),
     path('api/ping-watch/', views.ping_watch_session, name='ping_watch_session'),
     # JSON: Upload video assets to storage
     path('api/upload-video/', views.api_upload_video, name='api_upload_video'),
