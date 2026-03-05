@@ -291,6 +291,27 @@ def api_get_wallet(request):
     except Exception as e:
         return _json_error(str(e), status=500)
 
+
+@require_GET
+def api_profile(request):
+    """API: Return current user's profile plus wallet balances."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    # Ensure related rows exist so new users always see 5 TC
+    profile, _ = UserProfile.objects.get_or_create(user=user, defaults={'wallet_balance': 5})
+    wallet, _ = Wallet.objects.get_or_create(user=user)
+
+    return _json_success({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'wallet_balance': profile.wallet_balance,
+        'balance_tc': float(wallet.balance_tc),
+        'balance_vnd': float(wallet.balance_vnd),
+    })
+
 def main_view(request):
     """Serve main page if authenticated; otherwise redirect to login."""
     return _json_error('This endpoint is deprecated in API mode.', status=410)
@@ -831,8 +852,6 @@ def api_reward_ads(request):
         "message": "Reward success",
         "balance": wallet.balance_tc
     })
-from django.http import JsonResponse
-import json
 
 def video_tracking(request):
 

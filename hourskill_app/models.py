@@ -246,6 +246,8 @@ class UserProfile(models.Model):
     role = models.CharField(max_length=50, blank=True, null=True)
     # Flexible survey response storage for personalization
     survey_answers = models.JSONField(default=list, blank=True, null=True)
+    wallet_balance = models.IntegerField(default=5)
 
+    wallet_balance = models.IntegerField(default=5) # Đảm bảo có default=5 ở đây
     def __str__(self):
         return f"{self.user.email} - Vai trò: {self.role}"

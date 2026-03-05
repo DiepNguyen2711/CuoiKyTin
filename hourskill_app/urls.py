@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/register/', views.api_register, name='api_register'),
     path('api/login/', views.api_login, name='api_login'),
     path('api/wallet/', views.api_get_wallet, name='api_get_wallet'),
+    path('api/profile/', views.api_profile, name='api_profile'),
     path('api/survey/', views.api_survey, name='survey'),
     path('api/select-role/', views.api_select_role, name='select-role'),
     path('api/ping-watch/', views.ping_watch_session, name='ping_watch_session'),
