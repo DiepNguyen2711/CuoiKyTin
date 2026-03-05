@@ -45,3 +45,34 @@ def transfer_tc(sender_user, receiver_user, amount_tc, tx_type):
         receiver_wallet.save(update_fields=['balance_tc', 'updated_at'])
 
         return new_transaction
+from .models import Video
+from django.contrib.auth.models import User
+
+def buy_video_service(user, video_id):
+
+    try:
+        video = Video.objects.get(id=video_id)
+
+        # ví dụ trừ TC giả lập
+        wallet = user.profile.time_credit
+
+        if wallet < video.price_tc:
+            return {
+                "success": False,
+                "message": "Không đủ Time Credit"
+            }
+
+        user.profile.time_credit -= video.price_tc
+        user.profile.save()
+
+        return {
+            "success": True,
+            "video_url": video.video_file.url
+        }
+
+    except Video.DoesNotExist:
+
+        return {
+            "success": False,
+            "message": "Video không tồn tại"
+        }

@@ -1,85 +1,120 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
   <title>Tạo khóa học - HOURSKILLS</title>
-  <link rel="stylesheet" href="tailwind.css">
+  <link rel="stylesheet" href="tailwind.css" />
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
-  <div class="max-w-2xl mx-auto mt-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-    <h1 class="text-2xl font-bold mb-4 text-center">Tạo khóa học mới</h1>
-    <div id="errorMsg" class="text-red-500 mb-4"></div>
 
-    <form id="courseForm" method="POST" enctype="multipart/form-data" class="space-y-4">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-6 rounded shadow w-full max-w-lg">
+    <h1 class="text-2xl font-bold mb-4 text-center">Tạo khóa học mới</h1>
+
+    <p id="errorMsg" class="text-red-500 mb-3"></p>
+
+    <form id="courseForm" class="space-y-4">
+      <!-- Tên khóa học -->
       <div>
         <label class="block mb-1">Tên khóa học</label>
-        <input type="text" name="title" id="title" required
-               class="w-full border px-3 py-2 rounded" placeholder="Nhập tên khóa học">
+        <input
+          type="text"
+          name="title"
+          required
+          class="w-full border px-3 py-2 rounded"
+          placeholder="Nhập tên khóa học"
+        />
       </div>
 
+      <!-- Giá TC -->
       <div>
-        <label class="block mb-1">Giá TC</label>
-        <input type="number" name="price_tc" id="price" required
-               class="w-full border px-3 py-2 rounded" placeholder="0.00" step="0.01" min="0">
+        <label class="block mb-1">Giá (TC)</label>
+        <input
+          type="number"
+          name="price_tc"
+          required
+          min="0"
+          class="w-full border px-3 py-2 rounded"
+          placeholder="Ví dụ: 50"
+        />
       </div>
 
+      <!-- Upload video -->
       <div>
-        <label class="block mb-1">Tải video</label>
-        <div class="flex items-center gap-3">
-          <label for="videoFile" class="cursor-pointer flex items-center gap-1 text-blue-500 hover:underline">
-            📤 Chọn tập tin
-          </label>
-          <span id="fileName" class="text-sm text-gray-600 truncate"></span>
-        </div>
-        <input type="file" accept="video/*" id="videoFile" name="video" required class="hidden">
-        <p class="text-sm text-gray-500 mt-1">Tải video từ máy tính (MP4, tối đa X phút)</p>
+        <label class="block mb-1">Video khóa học</label>
+        <input
+          type="file"
+          name="video"
+          accept="video/*"
+          required
+          class="w-full"
+        />
+        <p class="text-sm text-gray-500 mt-1">
+          Chỉ 1 video (MP4)
+        </p>
       </div>
 
-      <button id="submitBtn" class="w-full px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tạo khóa học</button>
+      <!-- Nút submit -->
+      <button
+        type="submit"
+        id="submitBtn"
+        class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+      >
+        Tạo khóa học
+      </button>
     </form>
   </div>
 
   <script>
-    const token = localStorage.getItem('token');
-    if (!token) {
-      window.location.href = 'login.html';
-    }
+    const form = document.getElementById('courseForm');
+    const errorMsg = document.getElementById('errorMsg');
+    const submitBtn = document.getElementById('submitBtn');
 
-    const videoInput = document.getElementById('videoFile');
-    const fileNameSpan = document.getElementById('fileName');
-    videoInput.addEventListener('change', () => {
-      const f = videoInput.files[0];
-      fileNameSpan.innerText = f ? f.name : '';
-    });
-
-    document.getElementById('courseForm').addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const errorMsg = document.getElementById('errorMsg');
-      errorMsg.innerText = '';
 
-      const form = e.target;
+      errorMsg.innerText = '';
+      submitBtn.disabled = true;
+      submitBtn.innerText = '⏳ Đang tải lên...';
+
       const formData = new FormData(form);
 
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/create-course/', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
+        const token = localStorage.getItem("token");
+
+if (!token) {
+  errorMsg.innerText = "Bạn chưa đăng nhập!";
+  submitBtn.disabled = false;
+  submitBtn.innerText = 'Tạo khóa học';
+  return;
+}
+
+const res = await fetch('http://127.0.0.1:8000/api/create-course/', {
+  method: 'POST',
+  headers: {
+    "Authorization": "Bearer " + token
+  },
+  body: formData
+});
 
         const data = await res.json();
-        if (res.ok && data.success) {
-          window.location.href = 'main.html';
+
+        if (res.ok && data.course_id) {
+          // 👉 chuyển sang trang xem video
+          window.location.href =
+            `video-detail.html?course_id=${data.course_id}`;
         } else {
-          errorMsg.innerText = data.message || 'Tạo khóa học thất bại';
+          errorMsg.innerText =
+            data.message || 'Tạo khóa học thất bại';
         }
       } catch (err) {
-        errorMsg.innerText = 'Lỗi kết nối, thử lại sau.';
+        errorMsg.innerText = 'Không kết nối được backend';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Tạo khóa học';
       }
     });
   </script>
+
 </body>
 </html>
