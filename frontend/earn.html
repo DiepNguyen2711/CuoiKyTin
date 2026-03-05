@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Earn TC</title>
+
+<style>
+body{
+    font-family: Arial;
+    text-align:center;
+    background:#f5f5f5;
+}
+
+.container{
+    width:700px;
+    margin:auto;
+    margin-top:40px;
+}
+
+video{
+    width:100%;
+    border-radius:10px;
+}
+
+#rewardBtn{
+    padding:12px 25px;
+    font-size:16px;
+    border:none;
+    border-radius:6px;
+    background:#2ecc71;
+    color:white;
+    cursor:pointer;
+    display:none;
+}
+
+#rewardBtn:hover{
+    background:#27ae60;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🎬 Xem quảng cáo để nhận TC</h2>
+
+<video id="adVideo" controls>
+    <source src="ads.mp4" type="video/mp4">
+</video>
+
+<h3 id="timer">Thời gian còn lại: 30 giây</h3>
+
+<button id="rewardBtn">Nhận thưởng</button>
+
+</div>
+
+
+<script>
+
+let timeLeft = 30;
+let timerElement = document.getElementById("timer");
+let rewardBtn = document.getElementById("rewardBtn");
+
+let countdown = setInterval(function(){
+
+    timeLeft--;
+
+    timerElement.innerText = "Thời gian còn lại: " + timeLeft + " giây";
+
+    if(timeLeft <= 0){
+        clearInterval(countdown);
+
+        timerElement.innerText = "Bạn đã xem xong quảng cáo";
+
+        rewardBtn.style.display = "inline-block";
+    }
+
+},1000);
+
+
+rewardBtn.onclick = function(){
+    alert("🎉 Bạn nhận được 5 TC!");
+}
+
+</script>
+<script>
+
+const video = document.getElementById("adVideo");
+
+let watchSeconds = 0;
+let interval = null;
+
+
+// khi video play
+video.addEventListener("play", () => {
+
+    interval = setInterval(() => {
+        watchSeconds++;
+        console.log("Đã xem:", watchSeconds,"giây");
+    },1000);
+
+});
+
+
+// khi video pause
+video.addEventListener("pause", () => {
+
+    clearInterval(interval);
+
+    sendTracking("pause");
+
+});
+
+
+// khi video kết thúc
+video.addEventListener("ended", () => {
+
+    clearInterval(interval);
+
+    sendTracking("ended");
+
+});
+
+
+// khi đóng tab
+window.addEventListener("beforeunload", () => {
+
+    sendTracking("leave");
+
+});
+
+
+
+function sendTracking(eventType){
+
+    fetch("http://127.0.0.1:8000/api/video-track/",{
+
+        method:"POST",
+
+        headers:{
+            "Content-Type":"application/json"
+        },
+
+        body: JSON.stringify({
+
+            video_id:1,
+            watched_seconds:watchSeconds,
+            event:eventType
+
+        })
+
+    })
+    .then(res=>res.json())
+    .then(data=>console.log("tracking sent",data))
+    .catch(err=>console.log("tracking error"));
+
+}
+
+</script>
+</body>
+</html>

@@ -30,4 +30,6 @@ urlpatterns = [
     path('api/create-course/', views.api_create_course_with_video, name='api_create_course_with_video'),
     path('create-course/', views.create_course, name='create_course'),
     path('api/follow-toggle/', views.api_toggle_follow, name='api_toggle_follow'),
+    path('api/reward-ads/', views.api_reward_ads, name='api_reward_ads'),
+    path("api/video-track/", views.video_tracking),
 ]

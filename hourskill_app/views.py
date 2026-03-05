@@ -796,3 +796,34 @@ def api_channel_detail(request):
         'is_following': is_following,
         'videos': videos,
     })
+@csrf_exempt
+def api_reward_ads(request):
+    user = get_user_from_token(request)
+
+    wallet, _ = Wallet.objects.get_or_create(user=user)
+
+    wallet.balance_tc += 5
+    wallet.save()
+
+    return JsonResponse({
+        "message": "Reward success",
+        "balance": wallet.balance_tc
+    })
+from django.http import JsonResponse
+import json
+
+def video_tracking(request):
+
+    if request.method == "POST":
+
+        data = json.loads(request.body)
+
+        video_id = data.get("video_id")
+        seconds = data.get("watched_seconds")
+        event = data.get("event")
+
+        print("Video:", video_id)
+        print("Seconds:", seconds)
+        print("Event:", event)
+
+        return JsonResponse({"status":"ok"})
