@@ -148,14 +148,11 @@
       const inputs = document.querySelectorAll('#surveyBox input');
       setProgress(100);
 
-<<<<<<< Updated upstream
-=======
       const roleElement = document.getElementById('role');
       const roleValue = roleElement ? roleElement.value : '';
 
       setProgress(100);
 
->>>>>>> Stashed changes
       const answers = Array.from(inputs).map(input => input.value.trim());
 
       try {
@@ -165,14 +162,6 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` 
           },
-<<<<<<< Updated upstream
-          body: JSON.stringify({ email, answers })
-        });
-
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          errorText.innerText = data.message || 'Lưu khảo sát thất bại, thử lại.';
-=======
           body: JSON.stringify({ 
             email: email, 
             role: roleValue, 
@@ -183,7 +172,6 @@
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           errorText.innerText = data.error || data.message || 'Lưu khảo sát thất bại, thử lại.';
->>>>>>> Stashed changes
           setProgress(40);
           return;
         }
