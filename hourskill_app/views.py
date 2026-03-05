@@ -291,7 +291,6 @@ def api_get_wallet(request):
     except Exception as e:
         return _json_error(str(e), status=500)
 
-
 @require_GET
 def api_profile(request):
     """API: Return current user's profile plus wallet balances."""

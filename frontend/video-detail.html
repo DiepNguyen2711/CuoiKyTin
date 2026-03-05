@@ -22,15 +22,64 @@
           <img id="creatorAvatar" class="w-12 h-12 rounded-full" alt="creator" />
           <div>
             <p id="creatorName" class="font-semibold"></p>
+
+<!-- COMMENT SECTION -->
+<div class="mt-10">
+  <h2 class="text-xl font-bold mb-4">Bình luận</h2>
+
+  <textarea
+    id="commentInput"
+    placeholder="Viết bình luận..."
+    class="w-full border rounded-lg p-3 mb-3"
+  ></textarea>
+
+  <select id="ratingInput" class="border p-2 rounded mb-3">
+    <option value="">Không đánh giá</option>
+    <option value="5">5⭐</option>
+    <option value="4">4⭐</option>
+    <option value="3">3⭐</option>
+    <option value="2">2⭐</option>
+    <option value="1">1⭐</option>
+  </select>
+
+  <br>
+
+  <button
+    onclick="postComment(videoId)"
+    class="px-4 py-2 bg-blue-500 text-white rounded"
+  >
+    Gửi bình luận
+  </button>
+
+  <div id="commentList" class="mt-6"></div>
+</div>
+
           </div>
         </div>
 
         <div class="flex items-center gap-3">
+
+          <!-- NÚT MUA VIDEO -->
+          <button onclick="buyVideo()" class="px-5 py-2 bg-green-500 text-white rounded-full">
+            Mua video
+          </button>
+
           <button id="notifyBtn" class="p-3 rounded-full bg-gray-100 hover:bg-gray-200" title="Bật thông báo">
             🔔
           </button>
-          <button id="followBtn" class="px-5 py-2 bg-blue-500 text-white rounded-full">Follow</button>
+
         </div>
+      </div>
+
+      <!-- COMMENT SECTION -->
+      <div id="commentSection" class="mt-8">
+        <h2 class="text-xl font-semibold mb-2">Viết bình luận</h2>
+        <div class="flex items-center mb-2">
+          <span class="mr-2">Đánh giá:</span>
+          <div id="starRating" class="flex space-x-1"></div>
+        </div>
+        <textarea id="commentText" class="w-full border rounded p-2" rows="4" placeholder="Viết bình luận của bạn..."></textarea>
+        <button id="submitCommentBtn" class="mt-2 bg-blue-500 text-white py-2 px-4 rounded opacity-50 cursor-not-allowed" disabled>Đăng bình luận</button>
       </div>
     </div>
   </div>
@@ -38,10 +87,10 @@
   <!-- POPUP LOCK -->
   <div id="unlockPopup" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
     <div class="bg-white p-6 rounded-xl w-[350px]">
-      <h2 class="text-lg font-bold mb-3">🔒 Video bị khóa</h2>
+      <h2 class="text-lg font-bold mb-3">Video bị khóa</h2>
       <p id="unlockText" class="mb-4 text-gray-600"></p>
       <button id="unlockBtn" class="w-full bg-blue-500 text-white py-2 rounded-lg">Mở khóa</button>
-    </div>
+        <p id="balanceText" class="mt-2 text-sm text-gray-600"></p>
   </div>
 
   <script>
@@ -56,12 +105,9 @@
       window.location.href = 'main.html';
     }
 
-    let following = false;
-    let creatorId = null;
-
     async function loadVideo() {
       try {
-        const res = await fetch(`/api/video/${videoId}/`, {
+        const res = await fetch(`http://localhost:8000/api/video/${videoId}/`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -77,44 +123,36 @@
         document.getElementById('creatorName').innerText = data.creator?.name || '';
         document.getElementById('creatorAvatar').src = data.creator?.avatar || '';
 
-        creatorId = data.creator?.id;
-        following = !!data.following;
-        setupFollow();
         setupNotify();
 
         if (data.locked) {
           document.getElementById('unlockPopup').classList.remove('hidden');
           document.getElementById('unlockText').innerText = `Bạn cần ${data.requiredTC} TC để mở khóa`;
+          // hiển thị trạng thái tiền
+          const balanceText = document.getElementById('balanceText');
+          if (data.userTC != null) {
+            balanceText.innerText = `Số dư hiện tại: ${data.userTC} TC`;
+            const unlockBtn = document.getElementById('unlockBtn');
+            if (data.userTC < data.requiredTC) {
+              unlockBtn.disabled = true;
+              unlockBtn.classList.add('opacity-50', 'cursor-not-allowed');
+              unlockBtn.innerText = 'Không đủ TC';
+            } else {
+              unlockBtn.disabled = false;
+              unlockBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+              unlockBtn.innerText = 'Mở khóa';
+            }
+          }
         } else {
-          document.getElementById('videoPlayer').src = data.videoUrl || '';
+          const player = document.getElementById('videoPlayer');
+          player.src = data.videoUrl || '';
+          player.load();
         }
+
       } catch (err) {
         alert('Không tải được video.');
         window.location.href = 'main.html';
       }
-    }
-
-    function setupFollow() {
-      const btn = document.getElementById('followBtn');
-
-      const updateBtn = () => {
-        btn.innerText = following ? 'Following' : 'Follow';
-        btn.className = following
-          ? 'px-5 py-2 bg-gray-300 rounded-full'
-          : 'px-5 py-2 bg-blue-500 text-white rounded-full';
-      };
-
-      updateBtn();
-
-      btn.onclick = async () => {
-        if (!creatorId) return;
-        await fetch(`/api/follow/${creatorId}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => {});
-        following = !following;
-        updateBtn();
-      };
     }
 
     function setupNotify() {
@@ -127,28 +165,181 @@
       };
     }
 
-    async function unlockVideo() {
+    // HÀM MUA VIDEO
+    async function buyVideo() {
       try {
-        const res = await fetch(`/api/video/${videoId}/unlock`, {
+        const res = await fetch(`http://localhost:8000/api/video/${videoId}/unlock`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         });
 
         const data = await res.json();
 
         if (res.ok) {
           document.getElementById('unlockPopup').classList.add('hidden');
-          document.getElementById('videoPlayer').src = data.videoUrl || '';
+
+          const player = document.getElementById('videoPlayer');
+          player.src = data.videoUrl || '';
+          player.load();
+
+          alert("Mua video thành công!");
+
         } else {
-          alert(data.message || 'Mở khóa thất bại');
+          alert(data.message || "Mua video thất bại");
         }
+
       } catch (err) {
-        alert('Mở khóa thất bại');
+        alert("Lỗi kết nối server");
       }
     }
 
-    document.getElementById('unlockBtn').addEventListener('click', unlockVideo);
+
+    // ================= COMMENT AJAX =================
+
+    async function loadComments(videoId) {
+      try {
+
+        const res = await fetch(`http://localhost:8000/api/video/${videoId}/comments/`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await res.json();
+
+        const list = document.getElementById("commentList");
+        list.innerHTML = "";
+
+        data.forEach(c => {
+
+          const div = document.createElement("div");
+          div.className = "border-b py-3";
+
+          div.innerHTML = `
+            <p class="font-semibold">${c.user}</p>
+            <p class="text-sm text-gray-600">${c.comment}</p>
+            <p class="text-yellow-500">${c.rating ? "⭐".repeat(c.rating) : ""}</p>
+          `;
+
+          list.appendChild(div);
+
+        });
+
+      } catch (err) {
+        console.log("Không tải được comment");
+      }
+    }
+
+
+    async function postComment(videoId) {
+
+      const comment = document.getElementById("commentInput").value;
+      const rating = document.getElementById("ratingInput").value;
+
+      if (!comment) {
+        alert("Bạn chưa nhập bình luận");
+        return;
+      }
+
+      try {
+
+        const res = await fetch(`http://localhost:8000/api/video/${videoId}/comment/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            comment: comment,
+            rating: rating
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+
+          document.getElementById("commentInput").value = "";
+          document.getElementById("ratingInput").value = "";
+
+          loadComments(videoId);
+
+        } else {
+
+          alert(data.message || "Không gửi được bình luận");
+
+        }
+
+      } catch (err) {
+
+        alert("Lỗi kết nối server");
+
+      }
+    }
+
+
     loadVideo();
+
+    // comment / star rating logic
+    const starContainer = document.getElementById('starRating');
+    let selectedStars = 0;
+    for (let i = 1; i <= 5; i++) {
+      const star = document.createElement('span');
+      star.className = 'text-gray-400 cursor-pointer text-2xl';
+      star.innerText = '★';
+      star.dataset.value = i;
+      star.addEventListener('click', () => {
+        selectedStars = i;
+        updateStars();
+        validateComment();
+      });
+      starContainer.appendChild(star);
+    }
+
+    function updateStars() {
+      const stars = starContainer.querySelectorAll('span');
+      stars.forEach(s => {
+        s.classList.toggle('text-yellow-400', Number(s.dataset.value) <= selectedStars);
+        s.classList.toggle('text-gray-400', Number(s.dataset.value) > selectedStars);
+      });
+    }
+
+    const commentText = document.getElementById('commentText');
+    const submitCommentBtn = document.getElementById('submitCommentBtn');
+    commentText.addEventListener('input', validateComment);
+
+    function validateComment() {
+      const filled = commentText.value.trim() !== '' && selectedStars > 0;
+      submitCommentBtn.disabled = !filled;
+      submitCommentBtn.classList.toggle('opacity-50', !filled);
+      submitCommentBtn.classList.toggle('cursor-not-allowed', !filled);
+    }
+
+    submitCommentBtn.addEventListener('click', async () => {
+      if (submitCommentBtn.disabled) return;
+      try {
+        const res = await fetch(`/api/video/${videoId}/comment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ text: commentText.value.trim(), rating: selectedStars })
+        });
+        if (res.ok) {
+          alert('Bình luận đã được gửi!');
+          commentText.value = '';
+          selectedStars = 0;
+          updateStars();
+          validateComment();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          alert(data.message || 'Gửi bình luận thất bại');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối khi gửi bình luận');
+      }
+    });
   </script>
+
 </body>
 </html>

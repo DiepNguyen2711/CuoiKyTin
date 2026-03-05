@@ -28,7 +28,12 @@ SECRET_KEY = "django-insecure-8e828-(y-#ze)j$wt6$$*m)vo^c=8uzs(g^kyrw069lw)7eymq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
 
 
 # Application definition
@@ -120,22 +125,19 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
+AUTH_USER_MODEL = 'hourskill_app.User'
+STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [
     BASE_DIR / 'frontend',
 ]
-
-AUTH_USER_MODEL = 'hourskill_app.User'
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'authorization',
 ]
 
-# Đường dẫn URL để truy cập file trên web (ví dụ: localhost:8000/media/video.mp4)
+# Đường dẫn URL để truy cập file trên web
 MEDIA_URL = '/media/'
-
 # Thư mục vật lý trên máy tính để lưu file
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
