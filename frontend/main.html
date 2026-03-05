@@ -26,47 +26,51 @@
 <body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
     <header class="bg-[#1a2236] dark:bg-gray-950 text-white sticky top-0 z-50 shadow-md h-16 transition-colors duration-300">
-        <div class="w-full mx-auto px-6 h-full flex justify-between items-center relative">    
-            <div class="flex items-center gap-2">
-                <span class="text-2xl">📚</span>
-                <a href="main.html" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
-            </div>
+    <div class="w-full mx-auto px-6 h-full flex justify-between items-center">
+        
+        <div class="flex items-center gap-2 w-1/4 shrink-0">
+            <span class="text-2xl">📚</span>
+            <a href="main.html" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
+        </div>
 
-            <div class="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 w-[400px]">
+        <div class="hidden md:flex flex-1 justify-center px-4 max-w-lg">
+            <div class="flex w-full">
                 <input type="text" placeholder="Tìm kiếm khóa học..." 
                        class="h-9 px-4 w-full rounded-l bg-gray-700 dark:bg-gray-800 text-white border border-transparent dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm placeholder-gray-400 transition-colors duration-300" id="searchInput">
                 <button class="h-9 px-5 bg-blue-600 text-white rounded-r hover:bg-blue-700 transition flex items-center justify-center" id="searchBtn">
                     🔍
                 </button>
             </div>
+        </div>
 
-            <div class="flex gap-3 items-center" id="userMenu">
+        <div class="flex items-center justify-end gap-5 w-auto shrink-0" id="userMenu">
+            
+            <div class="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold shadow-sm" title="Số dư ví">
+                🪙 <span id="headerWalletBalance"><span id="user-wallet-balance">0</span> TC</span>
             </div>
-                <button class="p-2 rounded-full hover:bg-gray-700 transition relative">
-                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    🔔
-                </button>
-                
-                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-700 transition focus:outline-none">
-                    <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-                    <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
-                </button>
 
-                <div class="flex items-center gap-3 bg-gray-700 pr-3 pl-3 py-1 rounded-full border border-gray-600 h-10 hover:bg-gray-600 transition cursor-pointer" id="userInfo">
-                    <span class="text-sm font-medium text-gray-200" id="userName">
-                        Chào!
-                    </span>
-                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-blue-400 shrink-0" id="userAvatar">
+            <button class="p-2 rounded-full hover:bg-gray-700 transition relative flex items-center justify-center">
+                <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                🔔
+            </button>
+
+            <div class="flex items-center gap-3 pl-4 border-l border-gray-600">
+                <div class="flex items-center gap-2 bg-gray-700 pr-1 pl-3 py-1 rounded-full border border-gray-600 h-10" id="userInfo">
+                    <span class="text-sm font-medium text-gray-200" id="userGreeting">Chào, Diep</span>
+                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-blue-400 shrink-0">
                         <svg class="w-6 h-6 text-gray-400 mt-1 shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                             <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
                         </svg>
                     </div>
                 </div>
-                <button id="logoutBtn" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium shadow-sm">
+                
+                <button id="logoutBtn" class="px-4 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium shadow-sm">
                     Đăng xuất
                 </button>
             </div>
+
         </div>
+    </div>
     </header>
 
     <div class="flex flex-1 relative">
@@ -122,30 +126,54 @@
         const htmlRoot = document.getElementById('html-root');
 
         function initTheme() {
-            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            const wantsDark = localStorage.getItem('color-theme') === 'dark'
+                || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+            if (wantsDark) {
                 htmlRoot.classList.add('dark');
-                themeToggleLightIcon.classList.remove('hidden');
+                if (themeToggleLightIcon) {
+                    themeToggleLightIcon.classList.remove('hidden');
+                }
+                if (themeToggleDarkIcon) {
+                    themeToggleDarkIcon.classList.add('hidden');
+                }
             } else {
                 htmlRoot.classList.remove('dark');
-                themeToggleDarkIcon.classList.remove('hidden');
+                if (themeToggleDarkIcon) {
+                    themeToggleDarkIcon.classList.remove('hidden');
+                }
+                if (themeToggleLightIcon) {
+                    themeToggleLightIcon.classList.add('hidden');
+                }
             }
         }
 
         initTheme();
 
-        themeToggleBtn.addEventListener('click', function() {
-            if (htmlRoot.classList.contains('dark')) {
-                htmlRoot.classList.remove('dark');
-                localStorage.setItem('color-theme', 'light');
-                themeToggleDarkIcon.classList.remove('hidden');
-                themeToggleLightIcon.classList.add('hidden');
-            } else {
-                htmlRoot.classList.add('dark');
-                localStorage.setItem('color-theme', 'dark');
-                themeToggleDarkIcon.classList.add('hidden');
-                themeToggleLightIcon.classList.remove('hidden');
-            }
-        });
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', function() {
+                const isDark = htmlRoot.classList.contains('dark');
+                if (isDark) {
+                    htmlRoot.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                    if (themeToggleDarkIcon) {
+                        themeToggleDarkIcon.classList.remove('hidden');
+                    }
+                    if (themeToggleLightIcon) {
+                        themeToggleLightIcon.classList.add('hidden');
+                    }
+                } else {
+                    htmlRoot.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                    if (themeToggleDarkIcon) {
+                        themeToggleDarkIcon.classList.add('hidden');
+                    }
+                    if (themeToggleLightIcon) {
+                        themeToggleLightIcon.classList.remove('hidden');
+                    }
+                }
+            });
+        }
 
         const token = localStorage.getItem('token');
         if (!token) {
@@ -153,17 +181,49 @@
         }
 
         const displayName = localStorage.getItem('username') || localStorage.getItem('email') || 'User';
-        document.getElementById('userName').innerText = `Chào, ${displayName}`;
+        const userNameEl = document.getElementById('userName');
+        if (userNameEl) {
+            userNameEl.innerText = `Chào, ${displayName}`;
+        }
 
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user_id');
-            window.location.href = 'login.html';
-        });
+        async function loadProfileBalance() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch('http://127.0.0.1:8000/api/profile/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const balanceEl = document.getElementById('user-wallet-balance');
+                if (balanceEl && typeof data.wallet_balance !== 'undefined') {
+                    balanceEl.innerText = data.wallet_balance;
+                }
+            } catch (err) {
+                // swallow errors to avoid blocking other scripts
+                console.error('Failed to load profile balance', err);
+            }
+        }
+
+        loadProfileBalance();
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                window.location.href = 'login.html';
+            });
+        }
         
-        document.getElementById('userInfo').addEventListener('click', () => {
-            window.location.href = 'profile.html';
-        });
+        const userInfo = document.getElementById('userInfo');
+        if (userInfo) {
+            userInfo.addEventListener('click', () => {
+                window.location.href = 'profile.html';
+            });
+        }
 
         async function loadCourses(searchText = '') {
             const grid = document.getElementById('courseGrid');
@@ -223,10 +283,13 @@
             }
         }
 
-        document.getElementById('searchBtn').addEventListener('click', () => {
-            const text = document.getElementById('searchInput').value.trim();
-            loadCourses(text);
-        });
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                const text = document.getElementById('searchInput').value.trim();
+                loadCourses(text);
+            });
+        }
 
         loadCourses();
     </script>
