@@ -867,3 +867,20 @@ def video_tracking(request):
         print("Event:", event)
 
         return JsonResponse({"status":"ok"})
+
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import Wallet
+
+@login_required
+def earn_reward(request):
+
+    wallet = Wallet.objects.get(user=request.user)
+
+    wallet.tc_balance += 5
+    wallet.save()
+
+    return JsonResponse({
+        "success": True,
+        "tc_balance": wallet.tc_balance
+    })
