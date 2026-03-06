@@ -149,8 +149,14 @@
             window.location.href = 'login.html';
         }
 
-        const displayName = localStorage.getItem('username') || localStorage.getItem('email') || 'User';
-        document.getElementById('userName').innerText = `Chào, ${displayName}`;
+        document.addEventListener("DOMContentLoaded", function () {
+            const username = localStorage.getItem("username") || "User";
+            const greeting = document.getElementById("userGreeting");
+
+            if (greeting) {
+                greeting.innerText = `Chào, ${username}`;
+            }
+        });
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
             localStorage.removeItem('token');
