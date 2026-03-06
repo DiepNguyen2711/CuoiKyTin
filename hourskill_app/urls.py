@@ -34,4 +34,5 @@ urlpatterns = [
     path('api/follow-toggle/', views.api_toggle_follow, name='api_toggle_follow'),
     path('api/reward-ads/', views.api_reward_ads, name='api_reward_ads'),
     path("api/video-track/", views.video_tracking),
+    path("earn/reward/", views.earn_reward),
 ]
