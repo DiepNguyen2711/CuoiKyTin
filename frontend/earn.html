@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Xem video kiếm TC</title>
+
+<style>
+body{
+    font-family: Arial;
+    text-align:center;
+}
+
+#timer{
+    font-size:30px;
+    font-weight:bold;
+    margin:20px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Xem video để nhận TC</h2>
+
+<div id="timer">Thời gian còn lại: 30 giây</div>
+
+<video id="video" width="700" controls controlsList="nodownload noplaybackrate"> <!-- FIX -->
+<source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+</video>
+
+<script>
+
+let video = document.getElementById("video")
+let timeLeft = 30
+let timer = document.getElementById("timer")
+
+let interval = null
+let rewardGiven = false
+let tabActive = true
+let lastTime = 0 // FIX: lưu vị trí video trước
+
+
+// cập nhật timer
+function updateTimer(){
+    timer.innerText = "Thời gian còn lại: " + timeLeft + " giây"
+}
+
+
+// bắt đầu đếm
+function startCounting(){
+
+    if(interval) return
+
+    interval = setInterval(()=>{
+
+        if(video.paused || !tabActive){
+            return
+        }
+
+        timeLeft--
+
+        updateTimer()
+
+        if(timeLeft <= 0){
+
+            clearInterval(interval)
+
+            if(!rewardGiven){
+
+                rewardGiven = true
+
+                alert("Bạn đã xem hết video và nhận TC!")
+
+                fetch("/api/video-track/",{
+                    method:"POST",
+                    headers:{
+                        "Content-Type":"application/json",
+                        "X-CSRFToken": getCookie("csrftoken")
+                    },
+                    body:JSON.stringify({
+                        video:"demo",
+                        completed:true
+                    })
+                })
+
+            }
+
+        }
+
+    },1000)
+
+}
+
+
+// khi play video
+video.addEventListener("play",()=>{
+    startCounting()
+})
+
+
+// ❌ chặn tua video (FIX)
+video.addEventListener("seeking",function(){
+
+    if(video.currentTime > lastTime + 0.5){
+        video.currentTime = lastTime
+    }
+
+})
+
+
+// lưu thời gian xem gần nhất (FIX)
+video.addEventListener("timeupdate",function(){
+    lastTime = video.currentTime
+})
+
+
+// khi đổi tab (FIX)
+document.addEventListener("visibilitychange",function(){
+
+    if(document.hidden){
+        tabActive = false
+        video.pause()
+    }
+    else{
+        tabActive = true
+    }
+
+})
+
+
+// lấy csrf
+function getCookie(name) {
+    let cookieValue = null
+    if (document.cookie && document.cookie !== '') {
+        let cookies = document.cookie.split(';')
+        for (let i = 0; i < cookies.length; i++) {
+            let cookie = cookies[i].trim()
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
+                break
+            }
+        }
+    }
+    return cookieValue
+}
+
+updateTimer()
+
+</script>
+
+</body>
+</html>
