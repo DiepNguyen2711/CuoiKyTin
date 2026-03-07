@@ -91,9 +91,13 @@ def _get_auth_user(request):
         return None
 
 
-def _safe_file_url(file_field):
-    """Return the served URL for a file field when available."""
+def _safe_file_url(request, file_field):
+    """Return full URL for video file."""
     try:
+        if not file_field:
+            return ''
+        if request:
+            return request.build_absolute_uri(file_field.url)
         return file_field.url
     except Exception:
         return ''
@@ -101,35 +105,53 @@ def _safe_file_url(file_field):
 
 def _process_video_purchase(user, video):
     """Unlock a video by moving TC between wallets and marking the session unlocked."""
+
     session, _ = WatchSession.objects.get_or_create(user=user, video=video)
+
     if session.is_unlocked:
-        return None, _json_error('Bạn đã mua video này rồi!')
-
-    price = video.price_tc
-    user_wallet = None
-
-    # Free videos unlock without touching wallets
-    if price == 0:
-        session.is_unlocked = True
-        session.save(update_fields=['is_unlocked'])
+        video_url = _safe_file_url(None, video.file_url)
         user_wallet = Wallet.objects.filter(user=user).first()
         remaining = user_wallet.balance_tc if user_wallet else Decimal('0.00')
-        video_url = _safe_file_url(video.file_url)
-        return {'remaining_tc': remaining, 'video_url': video_url, 'videoUrl': video_url}, None
+
+        return {
+            'remaining_tc': remaining,
+            'video_url': video_url,
+            'videoUrl': video_url,
+            'message': 'Video đã được mở khóa trước đó'
+        }, None
+
+    price = video.price_tc
+
+    # video miễn phí
+    if price == 0:
+        session.is_unlocked = True
+        session.save()
+
+        user_wallet = Wallet.objects.filter(user=user).first()
+        remaining = user_wallet.balance_tc if user_wallet else Decimal('0.00')
+
+        video_url = _safe_file_url(None, video.file_url)
+
+        return {
+            'remaining_tc': remaining,
+            'video_url': video_url,
+            'videoUrl': video_url
+        }, None
 
     try:
         with transaction.atomic():
-            user_wallet = _lock_wallet(user)
-            creator_wallet = _lock_wallet(video.creator)
 
-            if user_wallet.balance_tc < price:
-                return None, _json_error('Số dư TC không đủ. Vui lòng nạp thêm!')
+            buyer_wallet = Wallet.objects.select_for_update().get(user=user)
+            creator_wallet = Wallet.objects.select_for_update().get(user=video.creator)
 
-            user_wallet.balance_tc -= price
+            if buyer_wallet.balance_tc < price:
+                return None, _json_error('Số dư TC không đủ!')
+
+            buyer_wallet.balance_tc -= price
             creator_wallet.balance_tc += price
 
-            user_wallet.save(update_fields=['balance_tc', 'updated_at'])
-            creator_wallet.save(update_fields=['balance_tc', 'updated_at'])
+            buyer_wallet.save()
+            creator_wallet.save()
 
             Transaction.objects.create(
                 sender=user,
@@ -137,21 +159,21 @@ def _process_video_purchase(user, video):
                 tx_type='SPEND_VIEW',
                 amount_tc=price,
                 reference_video=video,
-                status='SUCCESS',
+                status='SUCCESS'
             )
 
             session.is_unlocked = True
-            session.save(update_fields=['is_unlocked'])
-    except Wallet.DoesNotExist:
-        return None, _json_error('Ví không tồn tại. Vui lòng liên hệ hỗ trợ.', status=500)
-    except Exception as exc:
-        return None, _json_error(str(exc), status=500)
+            session.save()
 
-    video_url = _safe_file_url(video.file_url)
+    except Exception as e:
+        return None, _json_error(str(e), status=500)
+
+    video_url = _safe_file_url(None, video.file_url)
+
     return {
-        'remaining_tc': user_wallet.balance_tc,
+        'remaining_tc': buyer_wallet.balance_tc,
         'video_url': video_url,
-        'videoUrl': video_url,
+        'videoUrl': video_url
     }, None
 
 def register_view(request):
@@ -177,8 +199,8 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
-
-
+    return render(request, 'login.html', {'form': form})
+  
 def create_course(request):
     """Render the frontend page where creators can upload a new course with video."""
     return render(request, 'create_course.html')
@@ -269,6 +291,26 @@ def api_get_wallet(request):
     except Exception as e:
         return _json_error(str(e), status=500)
 
+@require_GET
+def api_profile(request):
+    """API: Return current user's profile plus wallet balances."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    # Ensure related rows exist so new users always see 5 TC
+    profile, _ = UserProfile.objects.get_or_create(user=user, defaults={'wallet_balance': 5})
+    wallet, _ = Wallet.objects.get_or_create(user=user)
+
+    return _json_success({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'wallet_balance': profile.wallet_balance,
+        'balance_tc': float(wallet.balance_tc),
+        'balance_vnd': float(wallet.balance_vnd),
+    })
+
 def main_view(request):
     """Serve main page if authenticated; otherwise redirect to login."""
     return _json_error('This endpoint is deprecated in API mode.', status=410)
@@ -354,7 +396,7 @@ def api_get_video_detail(request, video_id):
         'description': video.description,
         'locked': locked,
         'requiredTC': float(video.price_tc),
-        'videoUrl': None if locked else _safe_file_url(video.file_url),
+        'videoUrl': None if locked else _safe_file_url(request, video.file_url),
         'watchSessionId': session.id,
         'creator': {
             'id': video.creator.id,
@@ -382,9 +424,9 @@ def api_unlock_video(request, video_id):
     payload, error = _process_video_purchase(user, video)
     if error:
         return error
-
-    return _json_success({'message': 'Mở khóa video thành công!', **payload})
-
+    if payload.get("video_url"):
+        payload["videoUrl"] = request.build_absolute_uri(payload["video_url"])
+        return _json_success({'message': 'Mở khóa video thành công!', **payload})
 @require_GET
 def api_get_courses(request):
     """API: Return active courses and categories for catalog display."""
@@ -408,9 +450,7 @@ def api_get_courses(request):
 @require_POST
 def api_toggle_follow(request, creator_id=None):
     """API: Toggle follow/unfollow for a creator, blocking self-follow.
-
     Supports both JSON body (creator_id) and REST-style path parameter.
-
     The response now returns the boolean follow state and the current follower count
     to allow the frontend to update the UI without reloading.
     All database operations are wrapped to avoid unhandled exceptions.
@@ -655,7 +695,7 @@ def api_select_role(request):
 @csrf_exempt
 @require_POST
 def api_survey(request):
-    """API: Store survey answers for the current user; depends on prior role selection."""
+    """API: Lưu câu trả lời khảo sát; tạo Profile nếu chưa có dựa trên role gửi lên."""
     try:
         data = _parse_json_body(request)
     except ValueError as exc:
@@ -670,22 +710,24 @@ def api_survey(request):
             return auth_error
 
     answers = data.get('answers')
+    role = data.get('role')
 
     try:
-        profile = UserProfile.objects.get(user=user)
-        profile.survey_answers = answers  # Persist raw answer list for later recommendations
-        profile.save(update_fields=['survey_answers'])
-    except UserProfile.DoesNotExist:
-        return _json_error('Người dùng chưa chọn vai trò (role) ở bước 1.', status=400)
+        profile, created = UserProfile.objects.update_or_create(
+            user=user,
+            defaults={
+                'role': role if role else 'student', 
+                'survey_answers': answers
+            }
+        )
+        
+        if not created and role:
+            profile.role = role
+            profile.save(update_fields=['role', 'survey_answers'])
+            
     except Exception as exc:
         return _json_error(str(exc), status=400)
-
     return _json_success({'message': 'Lưu khảo sát thành công!'})
-
-
-# ---------------------------------------------------------------------------
-# New endpoints added per engineering instructions
-# ---------------------------------------------------------------------------
 
 @csrf_exempt
 @require_POST
@@ -729,11 +771,15 @@ def api_create_course_with_video(request):
                 course=course,
                 file_url=video_file,
                 video_file=video_file,
+                duration_seconds=0,
             )
     except Exception as exc:
         return _json_error(str(exc), status=500)
 
-    return _json_success({'success': True})
+    return _json_success({
+    'course_id': course.id,
+    'message': 'Tạo khóa học thành công'
+})
 
 
 @require_GET
@@ -791,4 +837,50 @@ def api_channel_detail(request):
         'followers_count': followers_count,
         'is_following': is_following,
         'videos': videos,
+    })
+@csrf_exempt
+def api_reward_ads(request):
+    user = get_user_from_token(request)
+
+    wallet, _ = Wallet.objects.get_or_create(user=user)
+
+    wallet.balance_tc += 5
+    wallet.save()
+
+    return JsonResponse({
+        "message": "Reward success",
+        "balance": wallet.balance_tc
+    })
+
+def video_tracking(request):
+
+    if request.method == "POST":
+
+        data = json.loads(request.body)
+
+        video_id = data.get("video_id")
+        seconds = data.get("watched_seconds")
+        event = data.get("event")
+
+        print("Video:", video_id)
+        print("Seconds:", seconds)
+        print("Event:", event)
+
+        return JsonResponse({"status":"ok"})
+
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import Wallet
+
+@login_required
+def earn_reward(request):
+
+    wallet = Wallet.objects.get(user=request.user)
+
+    wallet.tc_balance += 5
+    wallet.save()
+
+    return JsonResponse({
+        "success": True,
+        "tc_balance": wallet.tc_balance
     })
