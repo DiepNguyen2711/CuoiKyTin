@@ -19,9 +19,11 @@
                 <a href="main.html" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
             </div>
 
-            <div class="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 w-[450px] gap-2">
+            <div class="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 w-[360px]">
                 <input type="text" placeholder="Tìm kiếm khóa học..." 
-                        class="h-9 px-4 w-96 rounded-l bg-gray-700 dark:bg-gray-800 text-white border border-transparent dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm placeholder-gray-400 transition-colors duration-300" id="searchInput">
+                    class="h-9 px-4 w-full rounded-l bg-gray-700 dark:bg-gray-800 text-white border border-transparent dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm placeholder-gray-400 transition-colors duration-300"
+                    id="searchInput">
+
                 <button class="h-9 px-5 bg-blue-600 text-white rounded-r hover:bg-blue-700 transition flex items-center justify-center" id="searchBtn">
                     🔍
                 </button>
@@ -49,7 +51,7 @@
                 <div class="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold">
                     🪙 <span id="user-wallet-balance">0</span> TC
                 </div>
-
+                <span class="text-gray-600 mx-3">|</span>
                 <!-- User -->
                 <div class="flex items-center gap-3 bg-gray-700 pr-3 pl-3 py-1 rounded-full border border-gray-600 h-10 hover:bg-gray-600 transition" id="userInfo">
                     <span class="text-sm font-semibold text-gray-200" id="userName">Chào!</span>
