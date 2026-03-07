@@ -24,15 +24,13 @@ class Wallet(models.Model):
     """Holds both in-app credits (TC) and real-currency VND for a single user."""
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
-    # Time-Credit balance (defaults to signup bonus)
-    balance_tc = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('5.00'))
-    # Fiat balance tracked for deposits/withdrawals
-    balance_vnd = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    # Single Time-Credit balance (1 TC = 1 minute)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     # Auto-updated on every save to trace wallet mutations
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Wallet of {self.user.username} | {self.balance_tc} TC"
+        return f"Wallet of {self.user.username} | {self.balance} TC"
 
 
 class Video(models.Model):
@@ -60,6 +58,8 @@ class Video(models.Model):
     price_tc = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'))
     # Soft-delete flag to hide content without losing ledger history
     is_active = models.BooleanField(default=True)
+    # Soft-delete flag for retaining history while removing from listings
+    is_deleted = models.BooleanField(default=False)
     # Creation timestamp for ordering
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -69,7 +69,8 @@ class Video(models.Model):
     def delete(self, *args, **kwargs):
         """Soft-delete by toggling is_active instead of removing rows."""
         self.is_active = False
-        self.save(update_fields=['is_active'])
+        self.is_deleted = True
+        self.save(update_fields=['is_active', 'is_deleted'])
 
 
 class Transaction(models.Model):
@@ -81,6 +82,7 @@ class Transaction(models.Model):
         ('EARN_CREATOR', 'Creator earns TC from viewers'),
         ('DEPOSIT_VND', 'Deposit VND'),
         ('WITHDRAW_VND', 'Withdraw VND'),
+        ('VIEW_POINT', 'View point accrual for creator'),
     )
 
     STATUS_CHOICES = (
@@ -98,7 +100,7 @@ class Transaction(models.Model):
     # Token amount involved (TC)
     amount_tc = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     # Fiat amount involved (VND)
-    amount_vnd = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    amount_vnd = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     # Processing status for async flows
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='SUCCESS')
     # Timestamp when the transaction was recorded
@@ -156,6 +158,8 @@ class Course(models.Model):
     bundle_price_tc = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Giá trọn bộ (TC)")
     # Soft-delete flag to keep history while hiding from listings
     is_active = models.BooleanField(default=True)
+    # Soft-delete flag to prevent hard deletes that break ledger history
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -164,7 +168,8 @@ class Course(models.Model):
     def delete(self, *args, **kwargs):
         """Soft-delete courses to preserve financial and content history."""
         self.is_active = False
-        self.save(update_fields=['is_active'])
+        self.is_deleted = True
+        self.save(update_fields=['is_active', 'is_deleted'])
 
 
 class CommentReview(models.Model):

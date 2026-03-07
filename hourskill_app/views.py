@@ -4,9 +4,11 @@ from decimal import Decimal
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.core.cache import cache
 from django.core import signing
-from django.core.files.storage import FileSystemStorage
+from django.core.files.storage import default_storage
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -27,6 +29,8 @@ from .models import (
     Wallet,
     WatchSession,
 )
+from .forms import CourseForm, VideoForm
+from .services import process_view_payment
 
 
 def _json_error(message, status=400):
@@ -91,6 +95,12 @@ def _get_auth_user(request):
         return None
 
 
+def _verify_ping_signature(token, max_age_seconds=30):
+    """Validate playback ping signature and return payload if valid."""
+    signer = signing.TimestampSigner()
+    return signer.unsign_object(token, max_age=max_age_seconds)
+
+
 def _safe_file_url(request, file_field):
     """Return full URL for video file."""
     try:
@@ -111,7 +121,7 @@ def _process_video_purchase(user, video):
     if session.is_unlocked:
         video_url = _safe_file_url(None, video.file_url)
         user_wallet = Wallet.objects.filter(user=user).first()
-        remaining = user_wallet.balance_tc if user_wallet else Decimal('0.00')
+        remaining = user_wallet.balance if user_wallet else Decimal('0.00')
 
         return {
             'remaining_tc': remaining,
@@ -128,7 +138,7 @@ def _process_video_purchase(user, video):
         session.save()
 
         user_wallet = Wallet.objects.filter(user=user).first()
-        remaining = user_wallet.balance_tc if user_wallet else Decimal('0.00')
+        remaining = user_wallet.balance if user_wallet else Decimal('0.00')
 
         video_url = _safe_file_url(None, video.file_url)
 
@@ -139,39 +149,18 @@ def _process_video_purchase(user, video):
         }, None
 
     try:
-        with transaction.atomic():
-
-            buyer_wallet = Wallet.objects.select_for_update().get(user=user)
-            creator_wallet = Wallet.objects.select_for_update().get(user=video.creator)
-
-            if buyer_wallet.balance_tc < price:
-                return None, _json_error('Số dư TC không đủ!')
-
-            buyer_wallet.balance_tc -= price
-            creator_wallet.balance_tc += price
-
-            buyer_wallet.save()
-            creator_wallet.save()
-
-            Transaction.objects.create(
-                sender=user,
-                receiver=video.creator,
-                tx_type='SPEND_VIEW',
-                amount_tc=price,
-                reference_video=video,
-                status='SUCCESS'
-            )
-
-            session.is_unlocked = True
-            session.save()
-
+        paid_amount = process_view_payment(user, video)
+        session.is_unlocked = True
+        session.save(update_fields=['is_unlocked'])
     except Exception as e:
         return None, _json_error(str(e), status=500)
 
     video_url = _safe_file_url(None, video.file_url)
+    wallet = Wallet.objects.filter(user=user).first()
+    remaining = wallet.balance if wallet else Decimal('0.00')
 
     return {
-        'remaining_tc': buyer_wallet.balance_tc,
+        'remaining_tc': remaining,
         'video_url': video_url,
         'videoUrl': video_url
     }, None
@@ -280,8 +269,7 @@ def api_get_wallet(request):
     try:
         wallet = Wallet.objects.get(user=user)
         return _json_success({
-            'balance_tc': float(wallet.balance_tc),
-            'balance_vnd': float(wallet.balance_vnd),
+            'balance': float(wallet.balance),
             'user_id': user.id,
             'username': user.username,
             'email': user.email,
@@ -307,8 +295,7 @@ def api_profile(request):
         'username': user.username,
         'email': user.email,
         'wallet_balance': profile.wallet_balance,
-        'balance_tc': float(wallet.balance_tc),
-        'balance_vnd': float(wallet.balance_vnd),
+        'balance': float(wallet.balance),
     })
 
 def main_view(request):
@@ -333,13 +320,32 @@ def ping_watch_session(request):
         return _json_error(str(exc), status=400)
 
     session_id = data.get('session_id')
+    signature = data.get('signature')
 
-    if not session_id:
-        return _json_error('Thiếu session_id!', status=400)
+    if not session_id or not signature:
+        return _json_error('Thiếu session_id hoặc signature!', status=400)
 
     session = WatchSession.objects.filter(id=session_id, user=user).first()
     if not session:
         return _json_error('Session không tồn tại hoặc không thuộc về bạn!', status=404)
+
+    # Anti-cheat: enforce >=9s between pings using cached last-seen timestamps
+    try:
+        payload = _verify_ping_signature(signature)
+    except Exception:
+        return _json_error('Chữ ký không hợp lệ hoặc đã hết hạn!', status=403)
+
+    # Require signature to be tied to the same user and session
+    if payload.get('uid') != user.id or payload.get('sid') != session_id:
+        return _json_error('Chữ ký không hợp lệ!', status=403)
+
+    cache_key = f"watch-ping:{user.id}:{session_id}"
+    now = timezone.now()
+    last_seen = cache.get(cache_key)
+    if last_seen and (now - last_seen).total_seconds() < 9:
+        return _json_error('Phát hiện spam ping!', status=403)
+
+    cache.set(cache_key, now, timeout=60)
 
     # Add 10 seconds per heartbeat; UI should call every 10s from player
     session.watched_seconds += 10
@@ -362,11 +368,255 @@ def api_upload_video(request):
     if not video_file:
         return _json_error('Không tìm thấy file video đính kèm!')
 
-    fs = FileSystemStorage()  # Uses MEDIA_ROOT/MEDIA_URL settings
-    filename = fs.save(f"videos/{video_file.name}", video_file)
-    video_url = fs.url(filename)  # Build served URL for frontend playback
+    filename = default_storage.save(f"videos/{video_file.name}", video_file)
+    video_url = default_storage.url(filename)
 
     return _json_success({'message': 'Upload video thành công!', 'video_url': video_url}, status=201)
+
+
+@csrf_exempt
+def api_course_list_create(request):
+    """List active courses or create a new course (creators only)."""
+    if request.method == 'GET':
+        q = request.GET.get('q', '').strip()
+        category_id = request.GET.get('category')
+        qs = Course.objects.filter(is_deleted=False, is_active=True)
+        if q:
+            qs = qs.filter(Q(title__icontains=q))
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+        data = [
+            {
+                'id': c.id,
+                'title': c.title,
+                'description': c.description,
+                'bundle_price_tc': float(c.bundle_price_tc),
+                'category': c.category.name if c.category else None,
+                'instructor': c.instructor.username,
+            }
+            for c in qs.order_by('-created_at')
+        ]
+        return _json_success({'courses': data})
+
+    if request.method == 'POST':
+        user, auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+        if not user.is_creator:
+            return _json_error('Chỉ Creator mới được phép tạo khóa học.', status=403)
+        try:
+            data = _parse_json_body(request)
+        except ValueError as exc:
+            return _json_error(str(exc), status=400)
+
+        form = CourseForm(data)
+        if not form.is_valid():
+            return _json_error(form.errors.as_json(), status=400)
+
+        course = form.save(commit=False)
+        course.instructor = user
+        course.save()
+
+        return _json_success({
+            'id': course.id,
+            'title': course.title,
+            'description': course.description,
+            'bundle_price_tc': float(course.bundle_price_tc),
+        }, status=201)
+
+    return _json_error('Method not allowed', status=405)
+
+
+@csrf_exempt
+def api_course_detail(request, course_id):
+    """Retrieve, update, or soft-delete a course."""
+    try:
+        course = Course.objects.get(id=course_id, is_deleted=False)
+    except Course.DoesNotExist:
+        return _json_error('Khóa học không tồn tại.', status=404)
+
+    if request.method == 'GET':
+        return _json_success({
+            'id': course.id,
+            'title': course.title,
+            'description': course.description,
+            'bundle_price_tc': float(course.bundle_price_tc),
+            'category': course.category.name if course.category else None,
+            'instructor': course.instructor.username,
+        })
+
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+    if not user.is_creator or course.instructor_id != user.id:
+        return _json_error('Chỉ Creator sở hữu khóa học mới được sửa/xóa.', status=403)
+
+    if request.method in ['PUT', 'PATCH']:
+        try:
+            data = _parse_json_body(request)
+        except ValueError as exc:
+            return _json_error(str(exc), status=400)
+        merged = {field: data.get(field, getattr(course, field)) for field in CourseForm.Meta.fields}
+        form = CourseForm(merged, instance=course)
+        if not form.is_valid():
+            return _json_error(form.errors.as_json(), status=400)
+        form.save()
+        return _json_success({'message': 'Cập nhật khóa học thành công.'})
+
+    if request.method == 'DELETE':
+        course.is_active = False
+        course.is_deleted = True
+        course.save(update_fields=['is_active', 'is_deleted'])
+        return _json_success({'message': 'Đã xóa mềm khóa học.'})
+
+    return _json_error('Method not allowed', status=405)
+
+
+@csrf_exempt
+def api_video_list_create(request):
+    """List active videos or create a new video (creators only)."""
+    if request.method == 'GET':
+        q = request.GET.get('q', '').strip()
+        course_id = request.GET.get('course')
+        qs = Video.objects.filter(is_deleted=False, is_active=True)
+        if q:
+            qs = qs.filter(Q(title__icontains=q))
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        data = [
+            {
+                'id': v.id,
+                'title': v.title,
+                'course': v.course_id,
+                'category': v.category.name if v.category else None,
+                'price_tc': float(v.price_tc),
+                'duration_seconds': v.duration_seconds,
+                'creator': v.creator.username,
+                'file_url': _safe_file_url(request, v.file_url),
+            }
+            for v in qs.order_by('-created_at')
+        ]
+        return _json_success({'videos': data})
+
+    if request.method == 'POST':
+        user, auth_error = _require_auth(request)
+        if auth_error:
+            return auth_error
+        if not user.is_creator:
+            return _json_error('Chỉ Creator mới được phép tải video.', status=403)
+
+        form = VideoForm(request.POST)
+        if not form.is_valid():
+            return _json_error(form.errors.as_json(), status=400)
+
+        video = form.save(commit=False)
+        video.creator = user
+
+        upload = request.FILES.get('file_url') or request.FILES.get('video_file')
+        if upload:
+            stored_name = default_storage.save(f"videos/{upload.name}", upload)
+            video.file_url = stored_name
+            video.video_file = stored_name
+
+        thumb = request.FILES.get('thumbnail')
+        if thumb:
+            stored_thumb = default_storage.save(f"thumbnails/{thumb.name}", thumb)
+            video.thumbnail = stored_thumb
+
+        video.save()
+
+        return _json_success({'id': video.id, 'title': video.title, 'file_url': _safe_file_url(request, video.file_url)}, status=201)
+
+    return _json_error('Method not allowed', status=405)
+
+
+@csrf_exempt
+def api_video_detail(request, video_id):
+    """Retrieve, update, or soft-delete a video."""
+    try:
+        video = Video.objects.get(id=video_id, is_deleted=False)
+    except Video.DoesNotExist:
+        return _json_error('Video không tồn tại.', status=404)
+
+    if request.method == 'GET':
+        return _json_success({
+            'id': video.id,
+            'title': video.title,
+            'description': video.description,
+            'price_tc': float(video.price_tc),
+            'course': video.course_id,
+            'category': video.category.name if video.category else None,
+            'duration_seconds': video.duration_seconds,
+            'file_url': _safe_file_url(request, video.file_url),
+            'thumbnail': _safe_file_url(request, video.thumbnail),
+        })
+
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+    if not user.is_creator or video.creator_id != user.id:
+        return _json_error('Chỉ Creator sở hữu video mới được sửa/xóa.', status=403)
+
+    if request.method in ['PUT', 'PATCH']:
+        if request.content_type and request.content_type.startswith('application/json'):
+            try:
+                payload = _parse_json_body(request)
+            except ValueError as exc:
+                return _json_error(str(exc), status=400)
+            files_payload = {}
+        else:
+            payload = request.POST
+            files_payload = request.FILES
+
+        merged = {field: payload.get(field, getattr(video, field)) for field in VideoForm.Meta.fields}
+        form = VideoForm(merged, instance=video)
+        if not form.is_valid():
+            return _json_error(form.errors.as_json(), status=400)
+
+        video = form.save(commit=False)
+
+        upload = files_payload.get('file_url') or files_payload.get('video_file')
+        if upload:
+            stored_name = default_storage.save(f"videos/{upload.name}", upload)
+            video.file_url = stored_name
+            video.video_file = stored_name
+
+        thumb = files_payload.get('thumbnail')
+        if thumb:
+            stored_thumb = default_storage.save(f"thumbnails/{thumb.name}", thumb)
+            video.thumbnail = stored_thumb
+
+        video.save()
+        return _json_success({'message': 'Cập nhật video thành công.'})
+
+    if request.method == 'DELETE':
+        video.is_active = False
+        video.is_deleted = True
+        video.save(update_fields=['is_active', 'is_deleted'])
+        return _json_success({'message': 'Đã xóa mềm video.'})
+
+    return _json_error('Method not allowed', status=405)
+
+
+def homepage(request):
+    """Public homepage listing active courses with optional search filters."""
+    q = request.GET.get('q', '').strip()
+    category_id = request.GET.get('category')
+    courses = Course.objects.filter(is_deleted=False, is_active=True)
+    if q:
+        courses = courses.filter(title__icontains=q)
+    if category_id:
+        courses = courses.filter(category_id=category_id)
+
+    categories = Category.objects.all()
+
+    context = {
+        'courses': courses.order_by('-created_at'),
+        'query': q,
+        'category_id': category_id,
+        'categories': categories,
+    }
+    return render(request, 'main.html', context)
 
 @require_GET
 def api_get_video_detail(request, video_id):
@@ -616,8 +866,8 @@ def api_reward_ads(request):
     try:
         with transaction.atomic():
             wallet = _lock_wallet(user)
-            wallet.balance_tc += reward_amount  # Credit TC for watching an ad
-            wallet.save(update_fields=['balance_tc', 'updated_at'])
+            wallet.balance += reward_amount  # Credit TC for watching an ad
+            wallet.save(update_fields=['balance', 'updated_at'])
 
             Transaction.objects.create(
                 receiver=user,
@@ -630,7 +880,43 @@ def api_reward_ads(request):
     except Exception as exc:
         return _json_error(str(exc), status=500)
 
-    return _json_success({'message': f'Đã cộng {reward_amount} TC vào ví!', 'new_balance': wallet.balance_tc})
+    return _json_success({'message': f'Đã cộng {reward_amount} TC vào ví!', 'new_balance': wallet.balance})
+
+
+@csrf_exempt
+@require_POST
+def reward_ad_view(request):
+    """API: Grant 1 TC for a confirmed 30s ad view with simple rate limit."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    cache_key = f"ad-reward-30s:{user.id}"
+    now = timezone.now()
+    last = cache.get(cache_key)
+    if last and (now - last).total_seconds() < 30:
+        return _json_error('Bạn đang nhận thưởng quá nhanh, vui lòng đợi.', status=429)
+
+    try:
+        with transaction.atomic():
+            wallet = Wallet.objects.select_for_update().get(user=user)
+            wallet.balance += Decimal('1.00')
+            wallet.save(update_fields=['balance', 'updated_at'])
+
+            Transaction.objects.create(
+                receiver=user,
+                tx_type='EARN_ADS',
+                amount_tc=Decimal('1.00'),
+                status='SUCCESS',
+            )
+    except Wallet.DoesNotExist:
+        return _json_error('Ví không tồn tại. Vui lòng liên hệ hỗ trợ.', status=404)
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    cache.set(cache_key, now, timeout=60)
+
+    return _json_success({'message': 'Đã cộng 1 TC sau khi xem quảng cáo 30s!', 'new_balance': wallet.balance})
 
 @csrf_exempt
 @require_POST
@@ -838,20 +1124,6 @@ def api_channel_detail(request):
         'is_following': is_following,
         'videos': videos,
     })
-@csrf_exempt
-def api_reward_ads(request):
-    user = get_user_from_token(request)
-
-    wallet, _ = Wallet.objects.get_or_create(user=user)
-
-    wallet.balance_tc += 5
-    wallet.save()
-
-    return JsonResponse({
-        "message": "Reward success",
-        "balance": wallet.balance_tc
-    })
-
 def video_tracking(request):
 
     if request.method == "POST":

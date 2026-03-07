@@ -3,8 +3,12 @@ from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered, NotRegistered
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models import Sum
+from django.template.response import TemplateResponse
+from django.utils import timezone
+from django.urls import path
 
-from .models import UserProfile
+from .models import Transaction, UserProfile, Wallet
 
 
 User = get_user_model()
@@ -12,6 +16,29 @@ User = get_user_model()
 
 admin.site.site_header = "Hệ thống Quản trị HourSkill"
 admin.site.site_title = "Admin HourSkill"
+
+
+def _system_overview(request):
+    now = timezone.now()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    total_wallet_tc = Wallet.objects.aggregate(total=Sum('balance'))['total'] or 0
+    total_vip = User.objects.filter(is_vip=True).count()
+    total_view_points = (
+        Transaction.objects.filter(
+            tx_type='VIEW_POINT',
+            timestamp__gte=month_start,
+        ).aggregate(total=Sum('amount_tc'))['total']
+        or 0
+    )
+
+    context = {
+        **admin.site.each_context(request),
+        'total_wallet_tc': total_wallet_tc,
+        'total_vip': total_vip,
+        'total_view_points': total_view_points,
+    }
+    return TemplateResponse(request, 'admin/system_overview.html', context)
 
 
 class UserProfileInline(admin.StackedInline):
@@ -26,6 +53,22 @@ class UserAdmin(BaseUserAdmin):
     """Extend the default user admin to surface profile data inline."""
 
     inlines = (UserProfileInline,)
+    list_display = BaseUserAdmin.list_display + ('is_creator', 'is_vip', 'view_points_this_month')
+
+    def view_points_this_month(self, obj):
+        now = timezone.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        total = (
+            Transaction.objects.filter(
+                receiver=obj,
+                tx_type='VIEW_POINT',
+                timestamp__gte=month_start,
+            ).aggregate(total=Sum('amount_tc'))['total']
+            or 0
+        )
+        return total
+
+    view_points_this_month.short_description = "View Points (month)"
 
 
 try:
@@ -57,3 +100,18 @@ for model in app_models:
     except AlreadyRegistered:
         # If a model is already registered elsewhere, leave it untouched
         continue
+
+
+# Hook custom admin view for system overview
+original_get_urls = admin.site.get_urls
+
+
+def get_urls_with_overview():
+    urls = original_get_urls()
+    custom_urls = [
+        path('system-overview/', admin.site.admin_view(_system_overview), name='system_overview'),
+    ]
+    return custom_urls + urls
+
+
+admin.site.get_urls = get_urls_with_overview
