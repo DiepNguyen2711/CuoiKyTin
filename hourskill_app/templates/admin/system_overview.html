@@ -1,0 +1,15 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>System Overview</h1>
+<div class="module">
+  <table class="admin-table">
+    <tbody>
+      <tr><th>Total TC in wallets</th><td>{{ total_wallet_tc }}</td></tr>
+      <tr><th>Total active VIP users</th><td>{{ total_vip }}</td></tr>
+      <tr><th>Total view points (this month)</th><td>{{ total_view_points }}</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
