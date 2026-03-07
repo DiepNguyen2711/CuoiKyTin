@@ -8,6 +8,7 @@
     <script>
         tailwind.config = { darkMode: 'class' };
     </script>
+    <div class="user-divider"></div>
     <link rel="stylesheet" href="tailwind.css">
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
@@ -19,14 +20,14 @@
                 <a href="main.html" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
             </div>
 
-            <div class="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 w-[450px] gap-2">
+            <div class="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 w-[450px]">
                 <input type="text" placeholder="Tìm kiếm khóa học..." 
                         class="h-9 px-4 w-96 rounded-l bg-gray-700 dark:bg-gray-800 text-white border border-transparent dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm placeholder-gray-400 transition-colors duration-300" id="searchInput">
                 <button class="h-9 px-5 bg-blue-600 text-white rounded-r hover:bg-blue-700 transition flex items-center justify-center" id="searchBtn">
                     🔍
                 </button>
             </div>
-            
+
             <div class="flex gap-3 items-center">
                 <button class="p-2 rounded-full hover:bg-gray-700 transition relative">
                     <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>

@@ -55,7 +55,7 @@ class Video(models.Model):
     # Optional thumbnail image
     thumbnail = models.ImageField(upload_to='thumbnails/', null=True, blank=True)
     # Duration in seconds, used for analytics and UX cues
-    duration_seconds = models.IntegerField(help_text="Length of the video in seconds")
+    duration_seconds = models.IntegerField(default=0)
     # Token cost to unlock this video
     price_tc = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'))
     # Soft-delete flag to hide content without losing ledger history
@@ -246,6 +246,8 @@ class UserProfile(models.Model):
     role = models.CharField(max_length=50, blank=True, null=True)
     # Flexible survey response storage for personalization
     survey_answers = models.JSONField(default=list, blank=True, null=True)
+    wallet_balance = models.IntegerField(default=5)
 
+    wallet_balance = models.IntegerField(default=5) # Đảm bảo có default=5 ở đây
     def __str__(self):
         return f"{self.user.email} - Vai trò: {self.role}"
