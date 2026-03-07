@@ -6,8 +6,13 @@ from . import views
 
 
 urlpatterns = [
+    path('', views.homepage, name='homepage'),
     path('api/register/', views.api_register, name='api_register'),
     path('api/login/', views.api_login, name='api_login'),
+    path('api/manage/courses/', views.api_course_list_create, name='api_course_list_create'),
+    path('api/manage/courses/<int:course_id>/', views.api_course_detail, name='api_course_detail'),
+    path('api/manage/videos/', views.api_video_list_create, name='api_video_list_create'),
+    path('api/manage/videos/<int:video_id>/', views.api_video_detail, name='api_video_detail'),
     path('api/wallet/', views.api_get_wallet, name='api_get_wallet'),
     path('api/profile/', views.api_profile, name='api_profile'),
     path('api/survey/', views.api_survey, name='survey'),
@@ -34,4 +39,5 @@ urlpatterns = [
     path('api/follow-toggle/', views.api_toggle_follow, name='api_toggle_follow'),
     path('api/reward-ads/', views.api_reward_ads, name='api_reward_ads'),
     path("api/video-track/", views.video_tracking),
+    path("earn/reward/", views.earn_reward),
 ]
