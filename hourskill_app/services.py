@@ -1,4 +1,5 @@
 from decimal import Decimal
+from math import ceil
 
 from django.db import transaction
 
@@ -25,7 +26,7 @@ def transfer_tc(sender_user, receiver_user, amount_tc, tx_type):
         sender_wallet = Wallet.objects.select_for_update().get(user=sender_user)
         receiver_wallet = Wallet.objects.select_for_update().get(user=receiver_user)
 
-        if sender_wallet.balance_tc < amount:
+        if sender_wallet.balance < amount:
             raise ValueError("Số dư TC không đủ để thực hiện giao dịch.")
 
         # Record the ledger entry before mutating balances for traceability
@@ -38,10 +39,91 @@ def transfer_tc(sender_user, receiver_user, amount_tc, tx_type):
         )
 
         # Apply debits/credits in-memory, then persist in a controlled order
-        sender_wallet.balance_tc -= amount
-        receiver_wallet.balance_tc += amount
+        sender_wallet.balance -= amount
+        receiver_wallet.balance += amount
 
-        sender_wallet.save(update_fields=['balance_tc', 'updated_at'])
-        receiver_wallet.save(update_fields=['balance_tc', 'updated_at'])
+        sender_wallet.save(update_fields=['balance', 'updated_at'])
+        receiver_wallet.save(update_fields=['balance', 'updated_at'])
 
         return new_transaction
+    
+    
+def process_view_payment(user, video):
+    """Deduct viewer TC, credit creator, and log the ledger atomically.
+
+    VIP users watch free (no wallet deduction) but still generate a VIEW_POINT
+    transaction for creator revenue pooling. Non-VIP users are charged
+    1 TC per minute (ceil on duration) with a wallet lock to prevent races.
+    """
+    # Bill by minutes watched (ceil) with a minimum of 1 minute
+    duration_seconds = video.duration_seconds or 0
+    billed_minutes = max(1, ceil(duration_seconds / 60))
+    amount = Decimal(billed_minutes)
+
+    # VIP users watch free but log view points
+    if getattr(user, 'is_vip', False):
+        Transaction.objects.create(
+            sender=user,
+            receiver=video.creator,
+            tx_type='VIEW_POINT',
+            amount_tc=Decimal('0.00'),
+            reference_video=video,
+            status='SUCCESS',
+        )
+        return Decimal('0.00')
+
+    try:
+        with transaction.atomic():
+            viewer_wallet = Wallet.objects.select_for_update().get(user=user)
+
+            if viewer_wallet.balance < amount:
+                raise ValueError("Số dư TC không đủ để xem video này.")
+
+            viewer_wallet.balance -= amount
+            viewer_wallet.save(update_fields=['balance', 'updated_at'])
+
+            # Record the view for creator revenue pooling (no immediate credit)
+            Transaction.objects.create(
+                sender=user,
+                receiver=video.creator,
+                tx_type='VIEW_POINT',
+                amount_tc=amount,
+                reference_video=video,
+                status='SUCCESS',
+            )
+    except Exception:
+        # Propagate for caller to handle and surface
+        raise
+
+    return amount
+from .models import Video
+from django.contrib.auth.models import User
+
+def buy_video_service(user, video_id):
+
+    try:
+        video = Video.objects.get(id=video_id)
+
+        # ví dụ trừ TC giả lập
+        wallet = user.profile.time_credit
+
+        if wallet < video.price_tc:
+            return {
+                "success": False,
+                "message": "Không đủ Time Credit"
+            }
+
+        user.profile.time_credit -= video.price_tc
+        user.profile.save()
+
+        return {
+            "success": True,
+            "video_url": video.video_file.url
+        }
+
+    except Video.DoesNotExist:
+
+        return {
+            "success": False,
+            "message": "Video không tồn tại"
+        }
