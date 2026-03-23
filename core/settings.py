@@ -26,7 +26,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-8e828-(y-#ze)j$wt6$$*m)vo^c=8uzs(g^kyrw069lw)7eymq"
 
 # SECURITY WARNING: don't run with debug turned on in production!
+<<<<<<< Updated upstream
 DEBUG = True
+=======
+# Default to True locally; allow env var override (accepts 1/true/yes/on)
+_debug_env = os.getenv("DEBUG")
+DEBUG = True if _debug_env is None else _debug_env.lower() in ("1", "true", "yes", "on")
+>>>>>>> Stashed changes
 
 ALLOWED_HOSTS = []
 
