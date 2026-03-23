@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hourskill}
+      POSTGRES_USER: ${POSTGRES_USER:-hourskill}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hourskill} -d ${POSTGRES_DB:-hourskill}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://hourskill:changeme@db:5432/hourskill}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-127.0.0.1,localhost}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-cloudinary}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-your-cloud-name}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-your-key}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-your-secret}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-}
+      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-}
+      AWS_S3_ENDPOINT_URL: ${AWS_S3_ENDPOINT_URL:-}
+      AWS_S3_CUSTOM_DOMAIN: ${AWS_S3_CUSTOM_DOMAIN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
