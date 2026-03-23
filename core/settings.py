@@ -14,9 +14,13 @@ import os
 from pathlib import Path
 
 from corsheaders.defaults import default_headers
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from a local .env when present (safe for dev)
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -26,13 +30,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-8e828-(y-#ze)j$wt6$$*m)vo^c=8uzs(g^kyrw069lw)7eymq"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-<<<<<<< Updated upstream
-DEBUG = True
-=======
 # Default to True locally; allow env var override (accepts 1/true/yes/on)
 _debug_env = os.getenv("DEBUG")
 DEBUG = True if _debug_env is None else _debug_env.lower() in ("1", "true", "yes", "on")
->>>>>>> Stashed changes
 
 ALLOWED_HOSTS = []
 
@@ -46,17 +46,22 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'hourskill_app',
-    'corsheaders',
+    "hourskill_app",
+    "corsheaders",
+    "storages",
+    "cloudinary",
+    "cloudinary_storage",
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "hourskill_app.middleware.SingleSessionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -126,13 +131,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
+AUTH_USER_MODEL = "hourskill_app.User"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'frontend',
+    BASE_DIR / "frontend",
 ]
 
-AUTH_USER_MODEL = 'hourskill_app.User'
+# WhiteNoise for efficient static file serving
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
