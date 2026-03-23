@@ -27,7 +27,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
+# Default to True locally; allow env var override (accepts 1/true/yes/on)
+_debug_env = os.getenv("DEBUG")
+DEBUG = True if _debug_env is None else _debug_env.lower() in ("1", "true", "yes", "on")
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
