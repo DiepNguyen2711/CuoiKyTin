@@ -15,135 +15,74 @@
 
 <div class="max-w-7xl mx-auto px-6 py-10">
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+	<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
-<!-- LEFT SIDE -->
-<div class="lg:col-span-2">
+		<!-- LEFT SIDE -->
+		<div class="lg:col-span-2 space-y-6">
 
-<!-- VIDEO PLAYER -->
-<div class="bg-black rounded-xl overflow-hidden shadow-lg">
+			<!-- VIDEO PLAYER -->
+			<div class="bg-black rounded-xl overflow-hidden shadow-lg">
+				<video id="videoPlayer" controls class="w-full h-[480px] object-contain"></video>
+				<iframe
+					id="videoIframe"
+					class="w-full h-[480px] hidden border-0"
+					allow="autoplay; fullscreen"
+					allowfullscreen
+					loading="lazy"
+				></iframe>
+			</div>
 
-<video
-id="videoPlayer"
-controls
-class="w-full h-[480px] object-contain"
-></video>
+			<!-- TITLE & CREATOR -->
+			<div class="space-y-4">
+				<h1 id="videoTitle" class="text-3xl font-bold"></h1>
 
-</div>
+				<div class="flex items-center justify-between border-b pb-4">
+					<div class="flex items-center gap-4">
+						<img id="creatorAvatar" class="w-12 h-12 rounded-full object-cover" src="https://i.pravatar.cc/100" />
+						<div>
+							<p id="creatorName" class="font-semibold text-lg"></p>
+							<p class="text-sm text-gray-500">Creator</p>
+						</div>
+					</div>
+					<button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-full text-sm">🔔 Theo dõi</button>
+				</div>
+			</div>
 
-<!-- TITLE -->
-<h1
-id="videoTitle"
-class="text-3xl font-bold mt-6"
-></h1>
+			<!-- COMMENTS -->
+			<div class="bg-white p-6 rounded-xl shadow">
+				<h2 class="text-xl font-bold mb-4">Bình luận</h2>
+				<textarea id="commentInput" placeholder="Viết bình luận..." class="w-full border rounded-lg p-3 mb-3"></textarea>
+				<div class="flex items-center gap-3 mb-5">
+					<select id="ratingInput" class="border p-2 rounded">
+						<option value="">Không đánh giá</option>
+						<option value="5">5⭐</option>
+						<option value="4">4⭐</option>
+						<option value="3">3⭐</option>
+						<option value="2">2⭐</option>
+						<option value="1">1⭐</option>
+					</select>
+					<button onclick="postComment(videoId)" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Gửi bình luận</button>
+				</div>
+				<div id="commentList" class="space-y-4"></div>
+			</div>
 
-<!-- CREATOR -->
-<div class="flex items-center justify-between mt-5 border-b pb-5">
+		</div>
 
-<div class="flex items-center gap-4">
+		<!-- RIGHT SIDE -->
+		<div class="space-y-4">
+			<div class="bg-white p-6 rounded-xl shadow" id="purchaseBox">
+				<h2 class="text-xl font-semibold mb-4">Khóa học</h2>
+				<p class="text-gray-600 mb-6">Mua video để mở khóa toàn bộ nội dung</p>
+				<button onclick="buyVideo()" class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold" id="purchaseBtn">💰 Mua video</button>
+			</div>
 
-<img
-id="creatorAvatar"
-class="w-12 h-12 rounded-full object-cover"
-src="https://i.pravatar.cc/100"
-/>
+			<div class="bg-white p-6 rounded-xl shadow hidden" id="sidebarList">
+				<h2 class="text-xl font-semibold mb-4">Nội dung khoá học</h2>
+				<ul id="sidebarItems" class="space-y-3 text-sm text-gray-800"></ul>
+			</div>
+		</div>
 
-<div>
-
-<p
-id="creatorName"
-class="font-semibold text-lg"
-></p>
-
-<p class="text-sm text-gray-500">
-Creator
-</p>
-
-</div>
-
-</div>
-
-<button
-class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-full text-sm"
->
-🔔 Theo dõi
-</button>
-
-</div>
-
-
-<!-- COMMENT -->
-<div class="mt-10">
-
-<h2 class="text-xl font-bold mb-4">
-Bình luận
-</h2>
-
-<textarea
-id="commentInput"
-placeholder="Viết bình luận..."
-class="w-full border rounded-lg p-3 mb-3"
-></textarea>
-
-<div class="flex items-center gap-3 mb-5">
-
-<select
-id="ratingInput"
-class="border p-2 rounded"
->
-
-<option value="">Không đánh giá</option>
-<option value="5">5⭐</option>
-<option value="4">4⭐</option>
-<option value="3">3⭐</option>
-<option value="2">2⭐</option>
-<option value="1">1⭐</option>
-
-</select>
-
-<button
-onclick="postComment(videoId)"
-class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
->
-Gửi bình luận
-</button>
-
-</div>
-
-<div
-id="commentList"
-class="space-y-4"
-></div>
-
-</div>
-
-</div>
-
-<!-- RIGHT SIDE -->
-<div>
-
-<div class="bg-white p-6 rounded-xl shadow">
-
-<h2 class="text-xl font-semibold mb-4">
-Khóa học
-</h2>
-
-<p class="text-gray-600 mb-6">
-Mua video để mở khóa toàn bộ nội dung
-</p>
-
-<button
-onclick="buyVideo()"
-class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold"
->
-💰 Mua video
-</button>
-
-</div>
-
-</div>
-
-</div>
+	</div>
 
 </div>
 
@@ -188,12 +127,108 @@ Mở khóa
 
 const token = localStorage.getItem("token");
 
-if (!token)
-window.location.href="login.html";
+if (!token) {
+	window.location.href = "login.html";
+}
+
+let requiredTC = 0; // Price of the current video/course (numeric)
+let currentBalance = 0; // User wallet balance (numeric)
 
 
 const params = new URLSearchParams(window.location.search);
-const videoId = params.get("id");
+const videoId =
+	params.get("id") || params.get("video_id") || params.get("course_id");
+const courseIdParam = params.get("course_id") || null;
+
+if (!videoId) {
+	alert("Thiếu id video trong URL");
+}
+
+async function fetchWalletBalance(){
+	try{
+		const res = await fetch("http://127.0.0.1:8000/api/wallet/", {
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		const data = await res.json();
+		if(res.ok){
+			currentBalance = Number(data.balance || 0);
+			console.log("[wallet] balance", currentBalance);
+		}else{
+			console.warn("[wallet] failed", data);
+		}
+	}catch(err){
+		console.warn("[wallet] error", err);
+	}
+}
+
+function toDrivePreview(url){
+	if(!url) return "";
+	// If already a preview or embed link
+	if(url.includes('/preview') || url.includes('/embed')) return url;
+	// Extract file id from common patterns
+	const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+	if(idMatch && idMatch[1]){
+		return `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+	}
+	// Fallback: replace /view with /preview
+	return url.replace('/view', '/preview');
+}
+
+function setPlayerSource(rawUrl){
+	const video = document.getElementById("videoPlayer");
+	const iframe = document.getElementById("videoIframe");
+
+	const isDrive = rawUrl && rawUrl.includes('drive.google.com');
+	if(isDrive){
+		const previewUrl = toDrivePreview(rawUrl);
+		video.classList.add("hidden");
+		iframe.classList.remove("hidden");
+		iframe.src = previewUrl;
+		console.log("[setPlayerSource] Using iframe preview", previewUrl);
+	} else {
+		iframe.classList.add("hidden");
+		video.classList.remove("hidden");
+		video.src = rawUrl || "";
+		video.load();
+		video.play().catch(()=>{});
+		console.log("[setPlayerSource] Using video tag", rawUrl);
+	}
+}
+
+async function loadCourseItems(){
+	const sidebar = document.getElementById("sidebarItems");
+	if(!sidebar) return;
+
+	// If course_id is known from URL, use it; otherwise try to infer from API later (not available here)
+	const courseId = courseIdParam;
+	if(!courseId){
+		console.log("[loadCourseItems] No course_id provided");
+		sidebar.innerHTML = '<li class="text-gray-500">Không có danh sách khoá học.</li>';
+		return;
+	}
+
+	try{
+		const res = await fetch(`http://127.0.0.1:8000/api/manage/videos/?course=${courseId}`, {
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		const data = await res.json();
+		console.log("[loadCourseItems] status", res.status, "payload", data);
+		sidebar.innerHTML = "";
+		if(res.ok && Array.isArray(data.videos) && data.videos.length){
+			data.videos.forEach(v => {
+				const li = document.createElement("li");
+				li.className = "flex justify-between items-center";
+				li.innerHTML = `<span>${v.title}</span><span class="text-xs text-gray-500">${v.duration_seconds || 0}s</span>`;
+				sidebar.appendChild(li);
+			});
+		} else {
+			sidebar.innerHTML = '<li class="text-gray-500">Chưa có video khác.</li>';
+		}
+	}catch(err){
+		console.error("[loadCourseItems] failed", err);
+		sidebar.innerHTML = '<li class="text-gray-500">Không tải được danh sách.</li>';
+	}
+}
 
 
 async function loadVideo(){
@@ -201,60 +236,55 @@ async function loadVideo(){
 try{
 
 const res = await fetch(
-`http://localhost:8000/api/video/${videoId}/`,
-{
-headers:{
-Authorization:`Bearer ${token}`
-}
-}
+	`http://127.0.0.1:8000/api/video/${videoId}/`,
+	{
+		headers:{
+			Authorization:`Bearer ${token}`
+		}
+	}
 );
 
 const data = await res.json();
+console.log("[loadVideo] status", res.status, "payload", data);
 
-document.getElementById("videoTitle").innerText =
-data.title || "";
-
-document.getElementById("creatorName").innerText =
-data.creator?.name || "Unknown Creator";
-
-document.getElementById("creatorAvatar").src =
-data.creator?.avatar || "https://i.pravatar.cc/100";
-
-
-if(data.locked){
-
-document
-.getElementById("unlockPopup")
-.classList.remove("hidden");
-
-document
-.getElementById("unlockText")
-.innerText=`Bạn cần ${data.requiredTC} TC để mở khóa`;
-
-if(data.userTC!=null){
-
-document
-.getElementById("balanceText")
-.innerText=`Số dư: ${data.userTC} TC`;
-
+if(!res.ok){
+  alert(data.message || "Không tải được video");
+  return;
 }
 
-}else{
+requiredTC = Number(data.requiredTC || 0);
 
-const player=document.getElementById("videoPlayer");
+document.getElementById("videoTitle").innerText = data.title || "";
+document.getElementById("creatorName").innerText = data.creator?.name || "Unknown Creator";
+document.getElementById("creatorAvatar").src = data.creator?.avatar || "https://i.pravatar.cc/100";
 
-player.src=data.videoUrl;
-player.load();
-player.play();
-
+if(data.is_owner){
+	console.log("[loadVideo] Owner access granted.");
+	document.getElementById("unlockPopup").classList.add("hidden");
+	const purchaseBtn = document.getElementById("purchaseBtn");
+	if(purchaseBtn) purchaseBtn.classList.add("hidden");
+	setPlayerSource(data.videoUrl);
+  // Owner can see sidebar list without purchase
+  const purchaseBox = document.getElementById("purchaseBox");
+  if(purchaseBox) purchaseBox.classList.add("hidden");
+  const sidebar = document.getElementById("sidebarList");
+  if(sidebar) sidebar.classList.remove("hidden");
+  await loadCourseItems();
+} else if(data.locked){
+	document.getElementById("unlockPopup").classList.remove("hidden");
+	document.getElementById("unlockText").innerText = `Bạn cần ${data.requiredTC} TC để mở khóa`;
+	const knownBalance = Number(currentBalance || data.userTC || 0);
+	document.getElementById("balanceText").innerText = `Số dư: ${knownBalance} TC`;
+	document.getElementById("videoPlayer").poster = "";
+} else {
+	setPlayerSource(data.videoUrl);
 }
 
 loadComments(videoId);
 
 }catch(e){
-
-alert("Không tải được video");
-
+	console.error("[loadVideo] error", e);
+	alert("Không tải được video");
 }
 
 }
@@ -265,8 +295,16 @@ async function buyVideo(){
 
 try{
 
+const price = Number(requiredTC || 0);
+const balance = Number(currentBalance || 0);
+
+if(price > 0 && balance < price){
+	alert("Bạn không đủ tiền");
+	return;
+}
+
 const res=await fetch(
-`http://localhost:8000/api/video/${videoId}/unlock`,
+`http://127.0.0.1:8000/api/video/${videoId}/unlock`,
 {
 method:"POST",
 headers:{
@@ -276,6 +314,7 @@ Authorization:`Bearer ${token}`
 );
 
 const data=await res.json();
+console.log("[buyVideo] status", res.status, "payload", data);
 
 if(res.ok){
 
@@ -283,18 +322,23 @@ document
 .getElementById("unlockPopup")
 .classList.add("hidden");
 
-const player=document.getElementById("videoPlayer");
+	setPlayerSource(data.videoUrl);
 
-player.src=data.videoUrl;
-
-player.load();
-player.play();
+	// Hide purchase box and show sidebar list placeholder
+	const purchaseBox = document.getElementById("purchaseBox");
+	if(purchaseBox) purchaseBox.classList.add("hidden");
+	const sidebar = document.getElementById("sidebarList");
+	if(sidebar) sidebar.classList.remove("hidden");
+	await loadCourseItems();
 
 alert("Mua video thành công");
 
-}else{
+// Update cached balance if backend returned remaining_tc
+const newBalance = data.remaining_tc != null ? Number(data.remaining_tc) : balance - price;
+currentBalance = Number.isFinite(newBalance) ? newBalance : balance;
 
-alert(data.message);
+}else{
+	alert(data.message || "Bạn không đủ tiền");
 
 }
 
@@ -404,7 +448,10 @@ alert("Không gửi được bình luận");
 }
 
 
-loadVideo();
+(async () => {
+	await fetchWalletBalance();
+	await loadVideo();
+})();
 
 </script>
 
