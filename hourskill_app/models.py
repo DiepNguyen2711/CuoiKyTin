@@ -25,7 +25,7 @@ class Wallet(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
     # Single Time-Credit balance (1 TC = 1 minute)
-    balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('30.00'))
     # Auto-updated on every save to trace wallet mutations
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -140,6 +140,9 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Tên danh mục")
     description = models.TextField(blank=True, null=True, verbose_name="Mô tả danh mục")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Categories"
 
     def __str__(self):
         return self.name

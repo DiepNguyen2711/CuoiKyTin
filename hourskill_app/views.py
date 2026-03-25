@@ -1,4 +1,5 @@
 import json
+import re
 import secrets
 from decimal import Decimal
 
@@ -106,11 +107,35 @@ def _safe_file_url(request, file_field):
     try:
         if not file_field:
             return ''
+        # If already an absolute URL (e.g., Google Drive), return directly
+        if isinstance(file_field, str) and file_field.startswith(('http://', 'https://')):
+            return file_field
+        if hasattr(file_field, 'name') and isinstance(file_field.name, str) and file_field.name.startswith(('http://', 'https://')):
+            return file_field.name
         if request:
             return request.build_absolute_uri(file_field.url)
         return file_field.url
     except Exception:
         return ''
+
+
+def _extract_drive_src(raw_value):
+    """Normalize Drive embed input; accept iframe or raw link and return src URL."""
+    if not raw_value:
+        return ''
+
+    # If an iframe string is passed, pull the src attribute
+    src_match = re.search(r'src\s*=\s*["\']([^"\']+)["\']', raw_value)
+    if src_match:
+        return src_match.group(1).strip()
+
+    # Otherwise, look for a Drive file id and build a preview URL
+    id_match = re.search(r"/d/([a-zA-Z0-9_-]+)", raw_value) or re.search(r"id=([a-zA-Z0-9_-]+)", raw_value)
+    if id_match:
+        return f"https://drive.google.com/file/d/{id_match.group(1)}/preview"
+
+    # Fallback to the provided value
+    return raw_value.strip()
 
 
 def _process_video_purchase(user, video):
@@ -626,11 +651,18 @@ def api_get_video_detail(request, video_id):
         return auth_error
 
     try:
-        video = Video.objects.get(id=video_id, is_active=True)
+        video = Video.objects.get(id=video_id, is_active=True, is_deleted=False)
     except Video.DoesNotExist:
         return _json_error('Video không tồn tại!', status=404)
 
+    is_owner = user.id == video.creator_id or (video.course and video.course.instructor_id == user.id)
+
     session, _ = WatchSession.objects.get_or_create(user=user, video=video)
+
+    # Owners always see the video unlocked
+    if is_owner:
+        session.is_unlocked = True
+        session.save(update_fields=['is_unlocked'])
 
     # Auto-unlock free videos on first fetch
     if video.price_tc == 0 and not session.is_unlocked:
@@ -646,6 +678,7 @@ def api_get_video_detail(request, video_id):
         'description': video.description,
         'locked': locked,
         'requiredTC': float(video.price_tc),
+        'is_owner': is_owner,
         'videoUrl': None if locked else _safe_file_url(request, video.file_url),
         'watchSessionId': session.id,
         'creator': {
@@ -695,6 +728,13 @@ def api_get_courses(request):
     )
 
     return _json_success({'categories': categories, 'courses': courses})
+
+
+@require_GET
+def api_categories(request):
+    """API: Return categories only (id, name) for dropdowns."""
+    categories = list(Category.objects.values('id', 'name'))
+    return _json_success({'categories': categories})
     
 @csrf_exempt
 @require_POST
@@ -780,6 +820,71 @@ def api_purchase_video(request):
         return error
 
     return _json_success({'message': 'Mua video thành công!', **payload})
+
+
+@csrf_exempt
+@require_POST
+def api_purchase_course(request):
+    """API: Purchase a course bundle using TC with strict balance check."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    course_id = data.get('course_id')
+    if not course_id:
+        return _json_error('Thiếu course_id!', status=400)
+
+    try:
+        course = Course.objects.get(id=course_id, is_active=True, is_deleted=False)
+    except Course.DoesNotExist:
+        return _json_error('Khóa học không tồn tại!', status=404)
+
+    # Normalize price to Decimal for safe arithmetic
+    price = Decimal(course.bundle_price_tc)
+
+    try:
+        with transaction.atomic():
+            buyer_wallet = _lock_wallet(user)
+            buyer_balance = Decimal(buyer_wallet.balance)
+            if buyer_balance < price:
+                return _json_error('Insufficient funds', status=400)
+
+            instructor_wallet = _lock_wallet(course.instructor)
+
+            buyer_wallet.balance -= price
+            instructor_wallet.balance += price
+
+            buyer_wallet.save(update_fields=['balance'])
+            instructor_wallet.save(update_fields=['balance'])
+
+            # Keep profile wallet_balance in sync for UX that reads from profile
+            UserProfile.objects.update_or_create(
+                user=user,
+                defaults={'wallet_balance': int(buyer_wallet.balance)},
+            )
+            UserProfile.objects.update_or_create(
+                user=course.instructor,
+                defaults={'wallet_balance': int(instructor_wallet.balance)},
+            )
+
+            Transaction.objects.create(
+                sender=user,
+                receiver=course.instructor,
+                tx_type='SPEND_VIEW',
+                amount_tc=price,
+                reference_video=None,
+            )
+    except Wallet.DoesNotExist:
+        return _json_error('Wallet not found.', status=404)
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    return _json_success({'message': 'Mua khóa học thành công!', 'remaining_tc': float(buyer_wallet.balance)})
 
 @csrf_exempt
 @require_POST
@@ -1022,8 +1127,11 @@ def api_create_course_with_video(request):
 
     Expects a multipart/form-data POST with fields:
     - title
-    - price_tc
-    - video (the file field name)
+    - description
+    - price_tc (alias bundle_price_tc)
+    - category (id)
+    - video (file) or video_url (Google Drive link / iframe)
+    - thumbnail (optional image file)
 
     The newly created course is owned by request.user and a Video linked to
     that course is also created.  Returns {"success": true} on success.
@@ -1032,40 +1140,81 @@ def api_create_course_with_video(request):
     if auth_error:
         return auth_error
 
-    title = request.POST.get('title')
-    price_tc = request.POST.get('price_tc')
-    video_file = request.FILES.get('video')
+    is_json = request.content_type and 'application/json' in request.content_type
+    if is_json:
+        try:
+            payload = _parse_json_body(request)
+        except ValueError as exc:
+            return _json_error(str(exc), status=400)
+        data = payload
+        files = {}
+    else:
+        data = request.POST
+        files = request.FILES
 
-    if not title or price_tc is None or not video_file:
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip()
+    category_id = data.get('category')
+    price_raw = data.get('bundle_price_tc') or data.get('price_tc')
+    video_url_raw = (data.get('video_url') or '').strip()
+    video_file = files.get('video') or files.get('video_file')
+    thumbnail_file = files.get('thumbnail')
+
+    video_url = _extract_drive_src(video_url_raw)
+
+    if not title or not description or price_raw is None or (not video_file and not video_url):
         return _json_error('Thiếu dữ liệu cần thiết!', status=400)
 
     try:
-        price_tc = Decimal(price_tc)
+        bundle_price_tc = Decimal(str(price_raw))
     except Exception:
         return _json_error('Giá TC không hợp lệ!', status=400)
 
+    form = CourseForm({
+        'title': title,
+        'description': description,
+        'category': category_id,
+        'bundle_price_tc': bundle_price_tc,
+    })
+
+    if not form.is_valid():
+        return _json_error(form.errors.as_json(), status=400)
+
     try:
         with transaction.atomic():
-            course = Course.objects.create(
+            course = form.save(commit=False)
+            course.instructor = user
+            course.save()
+
+            video = Video(
                 title=title,
-                bundle_price_tc=price_tc,
-                instructor=user,
-            )
-            Video.objects.create(
-                title=title,
+                description=description,
                 creator=user,
                 course=course,
-                file_url=video_file,
-                video_file=video_file,
+                category=course.category,
+                price_tc=bundle_price_tc,
                 duration_seconds=0,
             )
+
+            if video_file:
+                stored_name = default_storage.save(f"videos/{video_file.name}", video_file)
+                video.file_url = stored_name
+                video.video_file = stored_name
+            else:
+                video.file_url = video_url
+
+            if thumbnail_file:
+                thumb_name = default_storage.save(f"thumbnails/{thumbnail_file.name}", thumbnail_file)
+                video.thumbnail = thumb_name
+
+            video.save()
     except Exception as exc:
         return _json_error(str(exc), status=500)
 
     return _json_success({
-    'course_id': course.id,
-    'message': 'Tạo khóa học thành công'
-})
+        'course_id': course.id,
+        'message': 'Tạo khóa học thành công'
+    }, status=201)
 
 
 @require_GET
