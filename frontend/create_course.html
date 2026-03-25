@@ -12,8 +12,6 @@
 
 <div class="bg-white shadow-xl rounded-2xl w-full max-w-xl p-8">
 
-<!-- HEADER -->
-
 <div class="text-center mb-6">
 
 <h1 class="text-3xl font-bold text-gray-800">
@@ -21,7 +19,7 @@
 </h1>
 
 <p class="text-gray-500 text-sm mt-2">
-Tải lên video và chia sẻ kiến thức của bạn
+Chia sẻ link video và lan tỏa kiến thức của bạn
 </p>
 
 </div>
@@ -31,8 +29,6 @@ Tải lên video và chia sẻ kiến thức của bạn
 
 
 <form id="courseForm" class="space-y-5">
-
-<!-- TITLE -->
 
 <div>
 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -48,8 +44,6 @@ placeholder="Ví dụ: Python cho người mới"
 />
 </div>
 
-
-<!-- PRICE -->
 
 <div>
 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -72,31 +66,27 @@ Token Coin (TC) là tiền trong nền tảng
 </div>
 
 
-<!-- VIDEO UPLOAD -->
-
 <div>
 
 <label class="block text-sm font-medium text-gray-700 mb-2">
-Video khóa học
+Link chia sẻ video (Google Drive)
 </label>
 
 <input
-type="file"
-name="video"
-accept="video/mp4"
+type="text"
+name="video_url"
 required
 id="videoInput"
-class="w-full border rounded-lg p-2"
+class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+placeholder="Ví dụ: https://drive.google.com/file/d/1a2b3c.../view"
 />
 
 <p class="text-xs text-gray-400 mt-1">
-Chỉ hỗ trợ file MP4
+Dán link Drive ở chế độ "Bất kỳ ai có đường liên kết".
 </p>
 
 </div>
 
-
-<!-- VIDEO PREVIEW -->
 
 <div id="videoPreviewContainer" class="hidden">
 
@@ -104,16 +94,14 @@ Chỉ hỗ trợ file MP4
 Preview video
 </label>
 
-<video
+<iframe
 id="videoPreview"
-controls
-class="w-full rounded-lg border"
-></video>
+class="w-full aspect-video rounded-lg border"
+allow="autoplay"
+></iframe>
 
 </div>
 
-
-<!-- SUBMIT -->
 
 <button
 type="submit"
@@ -141,25 +129,33 @@ const videoPreview = document.getElementById("videoPreview")
 const previewContainer = document.getElementById("videoPreviewContainer")
 
 
-/* VIDEO PREVIEW */
+/* VIDEO PREVIEW - XỬ LÝ LINK GOOGLE DRIVE TỰ ĐỘNG */
 
-videoInput.addEventListener("change", function(){
+videoInput.addEventListener("input", function(){
 
-const file = this.files[0]
+const url = this.value.trim()
 
-if(!file) return
-
-if(file.type !== "video/mp4"){
-
-errorMsg.innerText = "Chỉ được upload video MP4"
-videoInput.value = ""
-return
-
+if(!url) {
+    previewContainer.classList.add("hidden")
+    videoPreview.src = ""
+    return
 }
 
-previewContainer.classList.remove("hidden")
+// Regex: Tự động quét để tìm ID của video trong link Drive
+const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
 
-videoPreview.src = URL.createObjectURL(file)
+if(match && match[1]){
+    const videoId = match[1];
+    
+    // Tự động tạo link iframe chuẩn đuôi preview để hiển thị
+    videoPreview.src = `https://drive.google.com/file/d/${videoId}/preview`;
+    previewContainer.classList.remove("hidden")
+    errorMsg.innerText = ""
+} else {
+    previewContainer.classList.add("hidden")
+    videoPreview.src = ""
+    errorMsg.innerText = "Link Google Drive không hợp lệ!"
+}
 
 })
 
@@ -174,10 +170,25 @@ e.preventDefault()
 errorMsg.innerText = ""
 
 submitBtn.disabled = true
-submitBtn.innerText = "⏳ Đang tải video..."
+submitBtn.innerText = "⏳ Đang lưu khóa học..." // Đổi chữ vì không còn chờ tải file
 
 
 const formData = new FormData(form)
+
+// TRƯỚC KHI GỬI: Tự động đóng gói lại link thành thẻ iframe HTML hoàn chỉnh
+const url = videoInput.value.trim();
+const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+
+if(match && match[1]){
+    const iframeCode = `<iframe src="https://drive.google.com/file/d/${match[1]}/preview" width="100%" height="400" allow="autoplay" allowfullscreen></iframe>`;
+    // Đè thẻ iframe HTML vào dữ liệu để gửi lên Backend
+    formData.set("video_url", iframeCode);
+} else {
+    errorMsg.innerText = "Vui lòng nhập link Google Drive hợp lệ trước khi gửi."
+    submitBtn.disabled = false
+    submitBtn.innerText = "🚀 Tạo khóa học"
+    return
+}
 
 try{
 
@@ -187,7 +198,7 @@ if(!token){
 
 errorMsg.innerText = "Bạn chưa đăng nhập!"
 submitBtn.disabled = false
-submitBtn.innerText = "Tạo khóa học"
+submitBtn.innerText = "🚀 Tạo khóa học"
 return
 
 }
