@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="vi" id="html-root">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh Sach Giao Vien - HOURSKILLS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <link rel="stylesheet" href="tailwind.css">
+    <script src="js/header-notifications.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <header class="app-header bg-[#1a2236] dark:bg-gray-950 text-white sticky top-0 z-50 shadow-md transition-colors duration-300">
+        <div class="app-header-inner">
+            <div class="flex items-center gap-2 w-1/4 shrink-0">
+                <span class="text-2xl">📚</span>
+                <a href="main.html" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
+            </div>
+
+            <h1 class="header-page-title text-lg md:text-2xl tracking-wide">GIAO VIEN</h1>
+
+            <div class="flex items-center justify-end gap-5 w-auto shrink-0">
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-700 transition focus:outline-none shrink-0 min-w-max">
+                    <svg id="theme-toggle-dark-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0"></path></svg>
+                </button>
+
+                <div class="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold shadow-sm shrink-0" title="So du vi">
+                    🪙 <span id="headerWalletBalance"><span id="user-wallet-balance">...</span> TC</span>
+                </div>
+
+                <div class="flex items-center gap-3 relative" id="userMenu">
+                    <button id="notificationBtn" class="p-2 h-10 w-10 rounded-full hover:bg-gray-700 transition relative flex items-center justify-center">
+                        <span id="notificationBadge" class="hidden absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">0</span>
+                        🔔
+                    </button>
+
+                    <div id="notificationDropdown" class="hidden absolute right-24 top-12 w-96 max-h-[420px] overflow-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50">
+                        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100">Thong bao</div>
+                        <ul id="notificationList" class="divide-y divide-gray-100 dark:divide-gray-700"></ul>
+                    </div>
+
+                    <div class="flex items-center gap-3 pl-4 border-l border-gray-600">
+                        <div class="flex items-center gap-2 bg-gray-700 pr-1 pl-3 py-1 rounded-full border border-gray-600 h-10" id="userInfo">
+                            <span class="text-sm font-medium text-gray-200" id="userGreeting">Chao, User</span>
+                            <img id="headerAvatar" src="{{ user.userprofile.avatar.url }}" onerror="this.src='https://placehold.co/80x80/e2e8f0/64748b?text=U'" class="w-8 h-8 rounded-full object-cover border-2 border-blue-400 shrink-0" alt="Avatar" />
+                        </div>
+
+                        <button id="logoutBtn" class="px-4 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium shadow-sm">Dang xuat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl w-full mx-auto px-6 py-8 flex-1">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-3xl font-extrabold text-gray-800 dark:text-white">Bang Xep Hang Giao Vien</h2>
+            <a href="main.html" class="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">Quay lai</a>
+        </div>
+
+        <div id="teachersLoading" class="text-gray-500 dark:text-gray-400">Dang tai danh sach giao vien...</div>
+        <div id="teachersEmpty" class="hidden text-gray-500 dark:text-gray-400">Chua co giao vien nao.</div>
+        <div id="teachersList" class="space-y-4"></div>
+    </main>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const htmlRoot = document.getElementById('html-root');
+
+        function setHeaderBalanceFromCache() {
+            const cached = localStorage.getItem('wallet_balance');
+            if (cached != null) {
+                updateBalanceDisplay(cached);
+            }
+        }
+
+        async function parseJsonResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                if (!response.ok) {
+                    throw new Error('Server returned HTML instead of JSON');
+                }
+                throw new Error('Phan hoi khong phai JSON');
+            }
+            return response.json();
+        }
+
+        function initTheme() {
+            const wantsDark = localStorage.getItem('color-theme') === 'dark'
+                || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (wantsDark) {
+                htmlRoot.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
+            } else {
+                htmlRoot.classList.remove('dark');
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+            }
+        }
+
+        function updateBalanceDisplay(newAmount) {
+            const safe = Math.max(0, Math.floor(Number(newAmount || 0)));
+            const txt = safe.toLocaleString('vi-VN');
+            const node = document.getElementById('user-wallet-balance');
+            if (node) node.innerText = txt;
+            localStorage.setItem('wallet_balance', String(safe));
+        }
+
+        async function syncHeaderBalance() {
+            try {
+                const response = await fetch(`${API_BASE}/api/user-profile/`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    throw new Error('Khong tai duoc so du tu /api/user-profile/');
+                }
+                const data = await parseJsonResponse(response);
+                const amount = data.balance ?? data.wallet_balance ?? 0;
+                updateBalanceDisplay(amount);
+            } catch (err) {
+                console.error('Header balance sync failed', err);
+                setHeaderBalanceFromCache();
+            }
+        }
+
+        async function syncUserData() {
+            try {
+                const res = await fetch(`${API_BASE}/api/me/`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await parseJsonResponse(res);
+                if (!res.ok) return;
+
+                localStorage.setItem('username', data.username || 'User');
+                localStorage.setItem('is_vip', data.is_vip ? '1' : '0');
+                localStorage.setItem('avatar_url', data.avatar_url || '');
+                const greet = document.getElementById('userGreeting');
+                const displayName = data.is_vip ? `${data.username || 'User'} 👑` : (data.username || 'User');
+                if (greet) greet.innerText = `Chao, ${displayName}`;
+                const avatar = document.getElementById('headerAvatar');
+                if (avatar && data.avatar_url) avatar.src = data.avatar_url;
+            } catch (err) {
+                console.error('Failed to sync user data', err);
+            }
+        }
+
+        function formatRating(value) {
+            const num = Number(value || 0);
+            return num > 0 ? num.toFixed(2) : '0.00';
+        }
+
+        function buildTeacherCard(teacher) {
+            const card = document.createElement('article');
+            card.className = 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm hover:shadow-md transition';
+
+            const followLabel = teacher.is_following ? 'Da theo doi' : 'Theo doi';
+            const followClass = teacher.is_following
+                ? 'bg-emerald-600 hover:bg-emerald-700'
+                : 'bg-blue-600 hover:bg-blue-700';
+
+            card.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                    <a href="profile.html?user_id=${teacher.id}" class="shrink-0">
+                        <img src="${teacher.avatar_url}" alt="${teacher.username}" class="w-20 h-20 rounded-full object-cover border-2 border-blue-400" loading="lazy" />
+                    </a>
+                    <div class="flex-1 min-w-0">
+                        <a href="profile.html?user_id=${teacher.id}" class="block text-xl font-bold text-gray-900 dark:text-white hover:text-blue-500">${teacher.username}</a>
+                        <p class="text-sm text-blue-600 dark:text-blue-400 font-semibold mt-1">${teacher.specialization || 'Giang vien da linh vuc'}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">${teacher.bio || 'Chua cap nhat mo ta linh vuc giang day.'}</p>
+                    </div>
+                    <div class="w-full md:w-56 shrink-0 flex md:flex-col items-start md:items-end justify-between gap-3">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                            <p>Luot xem: <span class="font-bold text-gray-900 dark:text-white">${Number(teacher.total_views || 0).toLocaleString('vi-VN')}</span></p>
+                            <p>Diem TB: <span class="font-bold text-amber-500">⭐ ${formatRating(teacher.avg_rating)}</span></p>
+                            <p>Follower: <span class="font-semibold">${Number(teacher.followers_count || 0).toLocaleString('vi-VN')}</span></p>
+                        </div>
+                        <button class="follow-btn ${followClass} text-white text-sm font-semibold px-4 py-2 rounded-lg transition" data-teacher-id="${teacher.id}" data-following="${teacher.is_following ? '1' : '0'}">${followLabel}</button>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function updateFollowButtonState(button, isFollowing) {
+            button.dataset.following = isFollowing ? '1' : '0';
+            button.textContent = isFollowing ? 'Da theo doi' : 'Theo doi';
+            button.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-emerald-600', 'hover:bg-emerald-700');
+            if (isFollowing) {
+                button.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+            } else {
+                button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            }
+        }
+
+        async function toggleFollow(teacherId, button) {
+            button.disabled = true;
+            const oldLabel = button.textContent;
+            button.textContent = 'Dang xu ly...';
+            try {
+                const res = await fetch(`${API_BASE}/api/follow/${teacherId}/`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ creator_id: teacherId })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.message || 'Khong the theo doi giao vien.');
+                }
+
+                updateFollowButtonState(button, Boolean(data.is_following));
+                const statLine = button.closest('article')?.querySelector('p:last-child span');
+                if (statLine) {
+                    statLine.textContent = Number(data.followers_count || 0).toLocaleString('vi-VN');
+                }
+            } catch (err) {
+                console.error(err);
+                button.textContent = oldLabel;
+                alert(err.message || 'Co loi xay ra khi theo doi.');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function loadTeachers() {
+            const loading = document.getElementById('teachersLoading');
+            const empty = document.getElementById('teachersEmpty');
+            const list = document.getElementById('teachersList');
+
+            loading.classList.remove('hidden');
+            empty.classList.add('hidden');
+            list.innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/teachers/`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const contentType = res.headers.get('content-type') || '';
+                if (!res.ok || !contentType.includes('application/json')) {
+                    throw new Error('Server returned HTML instead of JSON');
+                }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Khong tai duoc danh sach giao vien.');
+
+                const teachers = Array.isArray(data.teachers) ? data.teachers : [];
+                loading.classList.add('hidden');
+
+                if (!teachers.length) {
+                    empty.classList.remove('hidden');
+                    return;
+                }
+
+                teachers.forEach((teacher) => {
+                    const card = buildTeacherCard(teacher);
+                    list.appendChild(card);
+                });
+
+                list.querySelectorAll('.follow-btn').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const id = Number(button.dataset.teacherId);
+                        toggleFollow(id, button);
+                    });
+                });
+            } catch (err) {
+                loading.classList.add('hidden');
+                empty.classList.remove('hidden');
+                empty.innerText = err.message || 'Khong tai duoc danh sach giao vien.';
+            }
+        }
+
+        initTheme();
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = htmlRoot.classList.contains('dark');
+            if (isDark) {
+                htmlRoot.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+            } else {
+                htmlRoot.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+                themeToggleDarkIcon.classList.add('hidden');
+                themeToggleLightIcon.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('wallet_balance');
+            localStorage.removeItem('username');
+            localStorage.removeItem('is_vip');
+            localStorage.removeItem('avatar_url');
+            window.location.href = 'login.html';
+        });
+
+        document.getElementById('userInfo').addEventListener('click', () => {
+            window.location.href = 'profile.html';
+        });
+
+        setHeaderBalanceFromCache();
+        syncHeaderBalance();
+        syncUserData();
+        initHeaderNotifications({ apiBase: API_BASE, token });
+        loadTeachers();
+    </script>
+</body>
+</html>

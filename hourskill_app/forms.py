@@ -25,17 +25,9 @@ class VideoForm(forms.ModelForm):
             "description",
             "course",
             "category",
-            "price_tc",
             "duration_seconds",
+            "is_standalone",
         ]
-
-    def clean_price_tc(self):
-        price = self.cleaned_data.get("price_tc")
-        if price is None:
-            return price
-        if price < 0:
-            raise forms.ValidationError("Giá không được âm.")
-        return price
 
     def clean_duration_seconds(self):
         duration = self.cleaned_data.get("duration_seconds") or 0

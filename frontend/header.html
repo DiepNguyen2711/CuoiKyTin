@@ -1,0 +1,30 @@
+<header class="app-header bg-[#1a2236] dark:bg-gray-950 text-white sticky top-0 z-50 shadow-md transition-colors duration-300">
+  <div class="app-header-inner">
+    <div class="header-left shrink-0">
+      <span class="text-2xl">📚</span>
+      <a href="main.html" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
+      <h1 class="header-page-title">{{ page_title }}</h1>
+    </div>
+
+    <div class="header-right relative" id="userMenu">
+      <button id="headerSearchBtn" class="header-icon-btn" title="Tìm kiếm">🔍</button>
+
+      <button id="notificationBtn" class="header-icon-btn relative" title="Thông báo">
+        <span id="notificationBadge" class="notif-badge hidden absolute -top-1 -right-1 min-w-[20px] h-5 px-1 text-white text-xs rounded-full flex items-center justify-center font-bold">0</span>
+        🔔
+      </button>
+
+      <div id="notificationDropdown" class="hidden absolute right-0 top-12 w-96 max-h-[420px] overflow-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50">
+        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100">Thông báo</div>
+        <ul id="notificationList" class="divide-y divide-gray-100 dark:divide-gray-700"></ul>
+      </div>
+
+      <span id="headerVipCrown" class="vip-crown hidden" title="Tài khoản VIP">👑</span>
+
+      <div class="header-user" id="userInfo">
+        <span class="text-sm font-medium text-gray-200" id="userGreeting">Chào, User</span>
+        <img id="headerAvatar" src="https://placehold.co/80x80/e2e8f0/64748b?text=U" class="w-8 h-8 rounded-full object-cover border-2 border-blue-400 shrink-0" alt="Avatar" />
+      </div>
+    </div>
+  </div>
+</header>
