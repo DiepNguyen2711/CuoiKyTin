@@ -1,0 +1,79 @@
+/* Global design tokens for Hourskill */
+:root {
+  /* Brand colors */
+  --main-blue: #2563eb;
+  --main-blue-700: #1d4ed8;
+  --main-blue-500: #3b82f6;
+  --main-blue-100: #dbeafe;
+  --main-blue-50: #eff6ff;
+
+  /* Supporting palette */
+  --slate-900: #0f172a;
+  --slate-700: #334155;
+  --gray-900: #111827;
+  --gray-800: #1f2937;
+  --gray-700: #374151;
+  --gray-600: #4b5563;
+  --gray-400: #9ca3af;
+  --gray-300: #d1d5db;
+
+  /* Radii */
+  --card-radius: 25px;
+  --radius-xl: 16px;
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-pill: 9999px;
+
+  /* Font sizes */
+  --font-xs: 0.75rem;
+  --font-sm: 0.875rem;
+  --font-base: 1rem;
+  --font-md: 1.05rem;
+  --font-lg: 1.2rem;
+  --font-xl: 1.7rem;
+
+  /* Legacy aliases used by existing CSS */
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: var(--main-blue-500);
+  --color-blue-600: var(--main-blue);
+  --color-green-500: #10b981;
+  --color-green-600: #059669;
+
+  /* Shared surfaces */
+  --surface-card-bg: #ffffff;
+  --surface-card-border: var(--main-blue-100);
+  --surface-card-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+}
+
+/* Shared cross-page helpers to remove duplicate inline styles */
+.hs-btn {
+  text-decoration: none;
+  border: 1px solid #bfdbfe;
+  background: var(--main-blue-50);
+  color: #1e40af;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.hs-btn-primary {
+  background: linear-gradient(135deg, var(--main-blue), var(--main-blue-700));
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.hs-surface-card {
+  background: var(--surface-card-bg);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--surface-card-shadow);
+}

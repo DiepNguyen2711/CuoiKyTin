@@ -17,18 +17,22 @@ def tc_from_duration(duration_seconds: int) -> int:
 
 
 def main() -> None:
+    seed_owner_username = os.getenv("SEED_OWNER_USERNAME", "Diep")
+    seed_owner_email = os.getenv("SEED_OWNER_EMAIL", "diep@example.com")
+    seed_owner_password = os.getenv("SEED_OWNER_PASSWORD", "123")
+
     # Ensure owner user exists
     owner, created = User.objects.get_or_create(
-        username="Diep",
+        username=seed_owner_username,
         defaults={
-            "email": "diep@example.com",
+            "email": seed_owner_email,
             "is_creator": True,
         },
     )
 
     # Set default password if new user, or if current password is different
-    if created or not owner.check_password("123"):
-        owner.set_password("123")
+    if created or not owner.check_password(seed_owner_password):
+        owner.set_password(seed_owner_password)
         owner.save(update_fields=["password"])
 
     # Keep creator flag enabled for this seed owner

@@ -8,6 +8,7 @@
 <title>Video Detail - HourSkill</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="assets/js/alerts.js"></script>
 
 </head>
 
@@ -70,8 +71,17 @@
 			<!-- COMMENTS -->
 			<div class="bg-white p-6 rounded-xl shadow">
 				<h2 class="text-xl font-bold mb-4">Bình luận</h2>
-				<textarea id="commentInput" placeholder="Viết bình luận..." class="w-full border rounded-lg p-3 mb-3"></textarea>
-				<div class="flex items-center gap-3 mb-5">
+				<div class="flex items-start gap-3 mb-3">
+					<img
+						id="currentUserCommentAvatar"
+						class="w-10 h-10 rounded-full object-cover border border-gray-200"
+						src="https://placehold.co/80x80/e2e8f0/64748b?text=U"
+						alt="Avatar"
+						onerror="this.src='https://placehold.co/80x80/e2e8f0/64748b?text=U'"
+					/>
+					<textarea id="commentInput" placeholder="Viết bình luận..." class="w-full border rounded-lg p-3"></textarea>
+				</div>
+				<div class="flex items-center gap-3 mb-5 pl-12">
 					<select id="ratingInput" class="border p-2 rounded">
 						<option value="">Không đánh giá</option>
 						<option value="5">5⭐</option>
@@ -82,6 +92,7 @@
 					</select>
 					<button id="commentSubmitBtn" onclick="postComment(currentVideoId)" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>Gửi bình luận</button>
 				</div>
+				<p id="commentStatus" class="hidden text-sm text-gray-500 mb-4"></p>
 				<div id="commentList" class="space-y-4"></div>
 			</div>
 
@@ -158,6 +169,7 @@ let lessons = [];
 let currentCreatorId = null;
 let isFollowingCreator = false;
 let isVipUser = false;
+let currentLearnerId = localStorage.getItem("user_id") || "me";
 
 
 const params = new URLSearchParams(window.location.search);
@@ -168,7 +180,7 @@ currentVideoId = videoId;
 currentCourseId = courseIdParam;
 
 if (!videoId) {
-	alert("Thiếu id video trong URL");
+	window.showAlert?.("Thiếu id video trong URL", "error");
 }
 
 function updateFollowButtonUI(){
@@ -185,7 +197,7 @@ function updateFollowButtonUI(){
 
 async function toggleFollowCreator(){
 	if(!currentCreatorId){
-		alert("Không xác định được Creator");
+		window.showAlert?.("Không xác định được Creator", "error");
 		return;
 	}
 
@@ -201,7 +213,7 @@ async function toggleFollowCreator(){
 
 		const data = await res.json();
 		if(!res.ok){
-			alert(data.message || "Không thể follow creator");
+			window.showAlert?.(data.message || "Không thể follow creator", "error");
 			return;
 		}
 
@@ -209,7 +221,7 @@ async function toggleFollowCreator(){
 		updateFollowButtonUI();
 	}catch(err){
 		console.error("[toggleFollowCreator] failed", err);
-		alert("Lỗi server khi follow/unfollow");
+		window.showAlert?.("Lỗi server khi follow/unfollow", "error");
 	}
 }
 
@@ -362,6 +374,17 @@ function getComputedPriceForVideo(videoIdToCheck){
 	return Math.max(0, Number(requiredTC || 0));
 }
 
+function canLearnerAccessVideo(videoIdToCheck, learnerId){
+	const _viewer = learnerId || currentLearnerId;
+	const lesson = lessons.find(item => String(item.id) === String(videoIdToCheck));
+	if(!lesson) return false;
+	if(Boolean(lesson.is_unlocked)) return true;
+	if(lesson.prerequisite_id && !lesson.prerequisite_completed){
+		return false;
+	}
+	return true;
+}
+
 function syncCurrentVideoPriceUI(isLocked){
 	if(isVipUser){
 		const purchaseBtn = document.getElementById("purchaseBtn");
@@ -427,6 +450,8 @@ function renderLessonList(){
 		const li = document.createElement("li");
 		const computedPrice = Number(lesson.price_tc ?? computeTcFromDuration(lesson.duration_seconds));
 		const isUnlocked = Boolean(lesson.is_unlocked || isVipUser || lesson.is_free);
+		const canUnlockNow = canLearnerAccessVideo(lesson.id, currentLearnerId);
+		const blockedByPrerequisite = !isUnlocked && !canUnlockNow;
 		const isActive = String(lesson.id) === String(currentVideoId);
 
 		li.className = `border rounded-lg p-3 ${isActive ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"}`;
@@ -442,13 +467,17 @@ function renderLessonList(){
 				</div>
 			`;
 		} else {
+			const lockNote = blockedByPrerequisite
+				? `<p class="text-xs text-amber-700 mt-1">Can hoan thanh ${lesson.prerequisite_title || 'video tien quyet'} truoc khi mo khoa.</p>`
+				: "";
 			li.innerHTML = `
 				<div class="flex items-start justify-between gap-3">
 					<div>
 						<p class="font-semibold text-gray-900">${lesson.title}</p>
 						<p class="text-xs text-gray-500 mt-1">${formatDuration(lesson.duration_seconds)} • 🔒 Locked</p>
+						${lockNote}
 					</div>
-					<button data-unlock-id="${lesson.id}" class="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3 py-2 rounded-md">Unlock for ${computedPrice} TC</button>
+					<button data-unlock-id="${lesson.id}" class="shrink-0 ${blockedByPrerequisite ? 'bg-slate-300 text-slate-600 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 text-white'} text-xs px-3 py-2 rounded-md" ${blockedByPrerequisite ? 'disabled' : ''}>Unlock for ${computedPrice} TC</button>
 				</div>
 			`;
 		}
@@ -467,6 +496,11 @@ function renderLessonList(){
 	sidebar.querySelectorAll("button[data-unlock-id]").forEach(btn => {
 		btn.addEventListener("click", async (event) => {
 			const id = event.currentTarget.getAttribute("data-unlock-id");
+			const lesson = lessons.find(item => String(item.id) === String(id));
+			if(lesson && !canLearnerAccessVideo(id, currentLearnerId)){
+				window.showAlert?.(`Bạn cần hoàn thành ${lesson.prerequisite_title || 'video tiên quyết'} để mở khóa bài này!`, "error");
+				return;
+			}
 			await unlockLesson(id);
 		});
 	});
@@ -499,6 +533,9 @@ async function loadCourseItems(){
 				price_tc: Number(v.price_tc ?? computeTcFromDuration(v.duration_seconds ?? v.duration ?? 0)),
 				is_free: Boolean(v.is_free),
 				is_unlocked: Boolean(v.is_unlocked),
+				prerequisite_id: v.prerequisite_id || null,
+				prerequisite_title: v.prerequisite_title || '',
+				prerequisite_completed: Boolean(v.prerequisite_completed),
 			}));
 			renderLessonList();
 			syncCurrentVideoPriceUI(Boolean(lessons.find(item => String(item.id) === String(currentVideoId) && !item.is_unlocked)));
@@ -532,7 +569,7 @@ console.log("[loadVideo] status", res.status, "payload", data);
 
 if(!res.ok){
 	if(!silent){
-		alert(data.message || "Không tải được video");
+		window.showAlert?.(data.message || "Không tải được video", "error");
 	}
 	return false;
 }
@@ -580,6 +617,9 @@ if(data.is_owner){
 	clearPlayer();
 	showLockedPlaceholder();
 	document.getElementById("unlockPopup").classList.remove("hidden");
+	if(data.can_unlock_by_prerequisite === false && data.prerequisite_title){
+		document.getElementById("unlockText").innerText = `Bạn cần hoàn thành ${data.prerequisite_title} để mở khóa bài này!`;
+	}
 	const purchaseBox = document.getElementById("purchaseBox");
 	if(purchaseBox) purchaseBox.classList.remove("hidden");
 	const purchaseBtn = document.getElementById("purchaseBtn");
@@ -630,55 +670,259 @@ loadComments(targetVideoId);
 
 async function unlockLesson(lessonId){
 	const price = getComputedPriceForVideo(lessonId);
-
 	const confirmed = window.confirm(`You will spend ${price} TC to unlock this lesson. Proceed?`);
 	if(!confirmed) return;
 
-	if(price > 0 && Number(currentBalance || 0) < price){
-		alert("Bạn không đủ tiền");
-		return;
-	}
-
 	try{
-		const res = await fetch("http://127.0.0.1:8000/api/unlock-video/", {
-			method:"POST",
-			headers:{
-				"Content-Type":"application/json",
-				Authorization:`Bearer ${token}`
-			},
-			body: JSON.stringify({ video_id: lessonId })
+		const res = await fetch(`http://127.0.0.1:8000/api/video/${lessonId}/unlock/`, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${token}` }
 		});
-
 		const data = await res.json();
-		console.log("[unlockLesson] status", res.status, "payload", data);
 
 		if(!res.ok){
-			alert(data.message || "Không thể mở khóa bài học");
+			window.showAlert?.(data.message || "Không thể mở khóa video", "error");
 			return;
 		}
 
-		lessons = lessons.map(item => (
-			String(item.id) === String(lessonId)
-				? { ...item, is_unlocked: true }
-				: item
-		));
-		renderLessonList();
-
-		if(data.remaining_tc != null){
-			updateBalanceDisplay(data.balance ?? data.remaining_balance ?? data.remaining_tc);
-		} else {
-			await fetchWalletBalance();
+		const nextBalance = Number(
+			data.remaining_balance ?? data.balance ?? data.remaining_tc ?? currentBalance
+		);
+		if(Number.isFinite(nextBalance)){
+			updateBalanceDisplay(nextBalance);
 		}
 
 		if(String(currentVideoId) === String(lessonId)){
-			document.getElementById("unlockPopup").classList.add("hidden");
-			await loadVideoById(lessonId);
+			await loadVideoById(lessonId, { silent: true });
 		}
-	}catch(e){
-		console.error("[unlockLesson] error", e);
-		alert("Lỗi server");
+		await loadCourseItems();
+		window.showAlert?.(data.message || "Mở khóa thành công", "success");
+	}catch(err){
+		console.error("[unlockLesson] failed", err);
+		window.showAlert?.("Lỗi server khi mở khóa", "error");
 	}
 }
+
+const DEFAULT_AVATAR = "https://placehold.co/80x80/e2e8f0/64748b?text=U";
+
+function escapeHtml(value){
+	return String(value || "")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/\"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+function avatarFromName(name){
+	const safeName = encodeURIComponent(String(name || "U").trim() || "U");
+	return `https://ui-avatars.com/api/?name=${safeName}&background=e2e8f0&color=334155`;
+}
+
+function resolveAvatar(url, name){
+	if(url && String(url).trim()) return String(url).trim();
+	return avatarFromName(name);
+}
+
+function getCurrentUserName(){
+	return localStorage.getItem("username") || localStorage.getItem("user_name") || "Bạn";
+}
+
+function syncCommentComposerAvatar(){
+	const node = document.getElementById("currentUserCommentAvatar");
+	if(!node) return;
+	const storedAvatar = localStorage.getItem("avatar_url");
+	node.src = resolveAvatar(storedAvatar, getCurrentUserName());
+}
+
+function getReplyStorageKey(videoId){
+	return `hourskill_comment_replies_${videoId}`;
+}
+
+function loadRepliesMap(videoId){
+	try{
+		const raw = localStorage.getItem(getReplyStorageKey(videoId));
+		const parsed = raw ? JSON.parse(raw) : {};
+		return parsed && typeof parsed === "object" ? parsed : {};
+	}catch(_){
+		return {};
+	}
+}
+
+function saveRepliesMap(videoId, map){
+	localStorage.setItem(getReplyStorageKey(videoId), JSON.stringify(map || {}));
+}
+
+function replyItemTemplate(reply, commentId, videoId, level = 1){
+	const safeUser = escapeHtml(reply.user || "Người dùng");
+	const safeText = escapeHtml(reply.content || "");
+	const safeTime = escapeHtml(reply.created_at || "Vừa xong");
+	const avatar = escapeHtml(resolveAvatar(reply.avatar_url, reply.user));
+	const stars = reply.rating ? "⭐".repeat(Number(reply.rating) || 0) : "";
+	const marginClass = level > 1 ? "ml-8" : "ml-6";
+
+	return `
+		<div class="${marginClass} mt-3 rounded-lg border border-gray-100 bg-gray-50 p-3" data-reply-id="${reply.id}" data-parent-id="${reply.parent_id || ""}">
+			<div class="flex items-start gap-3">
+				<img src="${avatar}" class="w-8 h-8 rounded-full object-cover border border-gray-200" alt="avatar" onerror="this.src='${DEFAULT_AVATAR}'" />
+				<div class="flex-1 min-w-0">
+					<div class="flex items-center gap-2 flex-wrap">
+						<p class="font-semibold text-sm text-gray-900">${safeUser}</p>
+						<p class="text-xs text-gray-500">${safeTime}</p>
+					</div>
+					<p class="text-gray-700 mt-1 text-sm">${safeText}</p>
+					${stars ? `<p class="text-yellow-500 text-xs mt-1">${stars}</p>` : ""}
+					<button class="comment-reply-btn mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700" data-comment-id="${commentId}" data-reply-id="${reply.id}" data-video-id="${videoId}" type="button">Trả lời</button>
+				</div>
+			</div>
+		</div>
+	`;
+}
+
+function buildReplyTree(commentId, videoId, repliesMap, parentId = null, level = 1){
+	const all = Array.isArray(repliesMap[String(commentId)]) ? repliesMap[String(commentId)] : [];
+	return all
+		.filter((item) => {
+			if(parentId == null) return !item.parent_id;
+			return String(item.parent_id) === String(parentId);
+		})
+		.map((item) => {
+			const selfHtml = replyItemTemplate(item, commentId, videoId, level);
+			const children = buildReplyTree(commentId, videoId, repliesMap, item.id, level + 1);
+			return `${selfHtml}${children}`;
+		})
+		.join("");
+}
+
+function commentItemTemplate(comment, videoId, repliesMap){
+	const safeUser = escapeHtml(comment.user || "Người dùng");
+	const safeText = escapeHtml(comment.comment || comment.content || "");
+	const safeTime = escapeHtml(comment.created_at || "Vừa xong");
+	const avatar = escapeHtml(resolveAvatar(comment.avatar_url, comment.user));
+	const stars = comment.rating ? "⭐".repeat(Number(comment.rating) || 0) : "";
+	const commentId = String(comment.id);
+	const replyTreeHtml = buildReplyTree(commentId, videoId, repliesMap);
+
+	return `
+		<article class="rounded-xl border border-gray-200 p-4 shadow-sm bg-white" data-comment-id="${commentId}">
+			<div class="flex items-start gap-3">
+				<img src="${avatar}" class="w-10 h-10 rounded-full object-cover border border-gray-200" alt="avatar" onerror="this.src='${DEFAULT_AVATAR}'" />
+				<div class="flex-1 min-w-0">
+					<div class="flex items-center gap-2 flex-wrap">
+						<p class="font-semibold text-gray-900">${safeUser}</p>
+						<p class="text-xs text-gray-500">${safeTime}</p>
+					</div>
+					<p class="text-gray-700 mt-1 whitespace-pre-wrap">${safeText}</p>
+					${stars ? `<p class="text-yellow-500 text-sm mt-1">${stars}</p>` : ""}
+					<button class="comment-reply-btn mt-2 text-sm font-semibold text-blue-600 hover:text-blue-700" data-comment-id="${commentId}" data-video-id="${videoId}" type="button">Trả lời</button>
+					<div class="reply-form-wrap mt-3 hidden" id="reply-form-${commentId}"></div>
+					<div class="comment-replies mt-1" id="reply-list-${commentId}">${replyTreeHtml}</div>
+				</div>
+			</div>
+		</article>
+	`;
+}
+
+function renderCommentList(comments, videoId){
+	const list = document.getElementById("commentList");
+	const status = document.getElementById("commentStatus");
+	if(!list) return;
+
+	const safeComments = Array.isArray(comments) ? comments : [];
+	const repliesMap = loadRepliesMap(videoId);
+
+	if(!safeComments.length){
+		list.innerHTML = `<p class="text-sm text-gray-500">Chưa có bình luận nào. Hãy là người đầu tiên chia sẻ ý kiến.</p>`;
+		if(status){
+			status.classList.remove("hidden");
+			status.innerText = "0 bình luận";
+		}
+		return;
+	}
+
+	list.innerHTML = safeComments.map((comment) => commentItemTemplate(comment, videoId, repliesMap)).join("");
+	if(status){
+		status.classList.remove("hidden");
+		status.innerText = `${safeComments.length} bình luận`;
+	}
+}
+
+function renderReplyForm(commentId, videoId, parentReplyId = ""){
+	const host = document.getElementById(`reply-form-${commentId}`);
+	if(!host) return;
+	host.classList.remove("hidden");
+	host.innerHTML = `
+		<div class="rounded-lg border border-blue-100 bg-blue-50 p-3">
+			<textarea id="reply-input-${commentId}" class="w-full border rounded-lg p-2 text-sm" placeholder="Viết phản hồi..."></textarea>
+			<div class="mt-2 flex items-center justify-end gap-2">
+				<button class="reply-cancel-btn px-3 py-1.5 rounded text-sm bg-white border border-gray-300 text-gray-700" data-comment-id="${commentId}" type="button">Hủy</button>
+				<button class="reply-submit-btn px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700" data-comment-id="${commentId}" data-video-id="${videoId}" data-parent-reply-id="${parentReplyId || ""}" type="button">Gửi phản hồi</button>
+			</div>
+		</div>
+	`;
+}
+
+function hideReplyForm(commentId){
+	const host = document.getElementById(`reply-form-${commentId}`);
+	if(!host) return;
+	host.classList.add("hidden");
+	host.innerHTML = "";
+}
+
+function appendReplyToStore(videoId, commentId, content, parentReplyId = ""){
+	const map = loadRepliesMap(videoId);
+	const key = String(commentId);
+	const bucket = Array.isArray(map[key]) ? map[key] : [];
+	bucket.push({
+		id: `r_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+		parent_id: parentReplyId || null,
+		user: getCurrentUserName(),
+		avatar_url: localStorage.getItem("avatar_url") || "",
+		content,
+		created_at: new Date().toLocaleString("vi-VN"),
+	});
+	map[key] = bucket;
+	saveRepliesMap(videoId, map);
+}
+
+document.getElementById("commentList")?.addEventListener("click", (event) => {
+	const target = event.target;
+	if(!(target instanceof HTMLElement)) return;
+
+	if(target.classList.contains("comment-reply-btn")){
+		const commentId = target.dataset.commentId;
+		const videoId = target.dataset.videoId || currentVideoId;
+		const parentReplyId = target.dataset.replyId || "";
+		if(commentId && videoId){
+			renderReplyForm(commentId, videoId, parentReplyId);
+		}
+		return;
+	}
+
+	if(target.classList.contains("reply-cancel-btn")){
+		const commentId = target.dataset.commentId;
+		if(commentId) hideReplyForm(commentId);
+		return;
+	}
+
+	if(target.classList.contains("reply-submit-btn")){
+		const commentId = target.dataset.commentId;
+		const videoId = target.dataset.videoId || currentVideoId;
+		const parentReplyId = target.dataset.parentReplyId || "";
+		if(!commentId || !videoId) return;
+
+		const input = document.getElementById(`reply-input-${commentId}`);
+		const replyText = String(input?.value || "").trim();
+		if(!replyText){
+			window.showAlert?.("Bạn chưa nhập phản hồi", "error");
+			return;
+		}
+
+		appendReplyToStore(videoId, commentId, replyText, parentReplyId);
+		hideReplyForm(commentId);
+		loadComments(videoId);
+	}
+});
 
 async function resolveInitialVideoId(){
 	if(!videoId){
@@ -716,67 +960,33 @@ async function resolveInitialVideoId(){
 
 async function buyCurrentVideo(){
 	if(!currentVideoId){
-		alert("Không xác định được video hiện tại");
+		window.showAlert?.("Không xác định được video hiện tại", "error");
 		return;
 	}
 	await unlockLesson(currentVideoId);
 }
 
-
-
 async function buyVideo(){
 	await buyCurrentVideo();
 }
 
-
-
 async function loadComments(videoId){
+	try{
+		const res=await fetch(
+		`http://127.0.0.1:8000/api/video/${videoId}/comments/`,
+		{
+		headers:{
+		Authorization:`Bearer ${token}`
+		}
+		}
+		);
 
-try{
-
-const res=await fetch(
-`http://127.0.0.1:8000/api/video/${videoId}/comments/`,
-{
-headers:{
-Authorization:`Bearer ${token}`
-}
-}
-);
-
-const data=await res.json();
-
-const list=document.getElementById("commentList");
-
-list.innerHTML="";
-
-data.forEach(c=>{
-
-const div=document.createElement("div");
-
-div.className="bg-white p-4 rounded-lg shadow";
-
-div.innerHTML=`
-
-<p class="font-semibold">${c.user}</p>
-
-<p class="text-gray-700 mt-1">${c.comment}</p>
-
-<p class="text-yellow-500">
-${c.rating?"⭐".repeat(c.rating):""}
-</p>
-
-`;
-
-list.appendChild(div);
-
-});
-
-}catch(e){
-
-console.log("Không load comment");
-
-}
-
+		const data=await res.json();
+		renderCommentList(Array.isArray(data) ? data : [], videoId);
+	}catch(e){
+		console.log("Không load comment");
+		renderCommentList([], videoId);
+	}
 }
 
 
@@ -788,13 +998,13 @@ const comment=document.getElementById("commentInput").value;
 const rating=document.getElementById("ratingInput").value;
 
 if(!rating || Number(rating) <= 0){
-	alert("Bạn phải đánh giá sao trước khi bình luận!");
+	window.showAlert?.("Bạn phải đánh giá sao trước khi bình luận!", "error");
 	return;
 }
 
 if(!comment){
 
-alert("Bạn chưa nhập bình luận");
+window.showAlert?.("Bạn chưa nhập bình luận", "error");
 
 return;
 
@@ -823,10 +1033,11 @@ document.getElementById("commentInput").value="";
 document.getElementById("ratingInput").value="";
 
 loadComments(videoId);
+syncCommentComposerAvatar();
 
 }else{
 
-	alert(payload.message || "Không gửi được bình luận");
+	window.showAlert?.(payload.message || "Không gửi được bình luận", "error");
 
 }
 
@@ -852,6 +1063,7 @@ loadComments(videoId);
 	}
 
 	await syncUserData();
+	syncCommentComposerAvatar();
 	const initialVideo = await resolveInitialVideoId();
 	if(initialVideo && String(initialVideo) !== String(videoId)){
 		await loadVideoById(initialVideo);

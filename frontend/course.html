@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="vi" id="html-root">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khóa học - HOURSKILLS</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <script src="components/header-component.js"></script>
+    <script src="components/navigation-injector.js"></script>
+    <script src="api/header-notifications.js"></script>
+    <script src="api/user-state.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div id="header-placeholder"></div>
+    <script>
+        if (window.HourskillNavigation?.inject) {
+            window.HourskillNavigation.inject({
+                headerTargetId: 'header-placeholder',
+                pageTitle: 'KHÓA HỌC',
+                hideSidebar: true,
+            });
+        }
+    </script>
+
+    <div class="flex flex-1 relative">
+        <div id="sidebar-container"></div>
+
+        <main class="ml-64 flex-1 px-10 py-12 bg-white dark:bg-gray-900 min-h-[calc(100vh-70px)] transition-colors duration-300">
+            <section class="mb-10" aria-label="Tìm kiếm khóa học">
+                <div class="home-search max-w-[640px]" role="search">
+                    <input
+                        type="text"
+                        id="courseSearchInput"
+                        class="home-search-input"
+                        placeholder="Tìm kiếm khóa học..."
+                        autocomplete="off"
+                    >
+                    <button id="courseSearchBtn" class="home-search-icon" type="button" aria-label="Tìm kiếm khóa học">
+                        🔍
+                    </button>
+                </div>
+            </section>
+
+            <section id="my-courses" class="mb-16">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2 transition-colors">
+                        <span class="w-2 h-8 bg-blue-500 rounded"></span> Khóa học của tôi
+                    </h2>
+                    <a href="create_course.html"
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition">
+                       ➕ Tạo khóa học
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="myCourseGrid"></div>
+                <p class="text-gray-500 dark:text-gray-400" id="myCourseEmpty">Đang tải khóa học của bạn...</p>
+            </section>
+
+            <section id="featured-courses" class="courses-section-spacing mb-16">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2 transition-colors">
+                        <span class="w-2 h-8 bg-indigo-500 rounded"></span> Khóa học nổi bật / Đã mua
+                    </h2>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Ưu tiên khóa học đã mua</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="featuredCourseGrid"></div>
+                <p class="text-gray-500 dark:text-gray-400" id="featuredCourseEmpty">Đang tải khóa học nổi bật...</p>
+            </section>
+        </main>
+    </div>
+
+    <footer class="bg-gray-800 dark:bg-gray-950 text-white py-8 ml-64 border-t border-gray-700 dark:border-gray-800 mt-auto z-10 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-6 text-center text-gray-400 dark:text-gray-500">
+            <p>&copy; 2026 HOURSKILLS. Project by Diệp, Nhân, Trọng, Quỳnh Anh.</p>
+        </div>
+    </footer>
+
+    <script src="js/components/sidebar.js"></script>
+    <script>
+        if (window.loadSidebar) {
+            window.loadSidebar();
+        }
+
+        const htmlRoot = document.getElementById('html-root');
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        function initTheme() {
+            const wantsDark = localStorage.getItem('color-theme') === 'dark'
+                || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+            if (wantsDark) {
+                htmlRoot.classList.add('dark');
+            } else {
+                htmlRoot.classList.remove('dark');
+            }
+        }
+
+        initTheme();
+
+        function applyHeaderUserState(userData) {
+            const greeting = document.getElementById('headerUserGreeting');
+            const crown = document.getElementById('headerVipCrown');
+            const headerAvatar = document.getElementById('headerAvatar');
+            const username = userData?.username || 'Guest';
+
+            if (greeting) {
+                greeting.innerText = `Chào, ${username}`;
+            }
+            if (crown) {
+                crown.classList.toggle('hidden', !Boolean(userData?.is_vip));
+            }
+            if (headerAvatar && userData?.avatar_url) {
+                headerAvatar.src = userData.avatar_url;
+            }
+            updateBalanceDisplay(userData?.tc_balance ?? 0, { emitEvent: false });
+        }
+
+        async function syncUserData() {
+            if (!token) return;
+            try {
+                const userData = await window.HourskillUserState.fetchCurrentUser({
+                    apiBase: 'http://127.0.0.1:8000',
+                    token,
+                    timeoutMs: 4500,
+                });
+                applyHeaderUserState(userData || {});
+            } catch (err) {
+                applyHeaderUserState({ username: 'Guest', tc_balance: 0, is_vip: false });
+                console.error('Failed to sync user data', err);
+            }
+        }
+
+        function formatTcDisplay(value) {
+            return Math.floor(Number(value || 0)).toLocaleString('vi-VN');
+        }
+
+        function updateBalanceDisplay(newAmount, options = {}) {
+            const { emitEvent = true } = options;
+            if (newAmount == null) return;
+            const normalized = Math.max(0, Math.floor(Number(newAmount || 0)));
+            const text = formatTcDisplay(normalized);
+
+            const targets = [
+                document.getElementById('user-wallet-balance'),
+                document.getElementById('tc-balance'),
+                document.getElementById('tcBalanceHeader'),
+                document.getElementById('walletBalance'),
+            ];
+
+            targets.forEach((el) => {
+                if (el) {
+                    el.innerText = text;
+                }
+            });
+
+            localStorage.setItem('wallet_balance', String(normalized));
+            if (emitEvent && window.HourskillUserState?.setUser) {
+                window.HourskillUserState.setUser({ tc_balance: normalized });
+            }
+            if (emitEvent) {
+                window.dispatchEvent(new CustomEvent('hourskill:balance-updated', {
+                    detail: { balance: normalized }
+                }));
+            }
+        }
+
+        window.updateBalanceDisplay = updateBalanceDisplay;
+
+        window.addEventListener('hourskill:balance-updated', (event) => {
+            const next = event?.detail?.balance;
+            if (next != null) {
+                updateBalanceDisplay(next, { emitEvent: false });
+            }
+        });
+
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'wallet_balance' && event.newValue != null) {
+                updateBalanceDisplay(event.newValue, { emitEvent: false });
+            }
+        });
+
+        const cachedUser = window.HourskillUserState?.getCachedUser
+            ? window.HourskillUserState.getCachedUser()
+            : { username: 'Guest', tc_balance: 0, is_vip: false };
+        applyHeaderUserState(cachedUser);
+
+        if (window.HourskillUserState?.subscribe) {
+            window.HourskillUserState.subscribe((userData) => {
+                applyHeaderUserState(userData || {});
+            });
+        }
+
+        syncUserData();
+        initHeaderNotifications({ apiBase: 'http://127.0.0.1:8000', token });
+
+        function normalizeCoursePayload(course) {
+            return {
+                id: course.id,
+                title: course.title || 'Khóa học chưa đặt tên',
+                categoryText: course.category_text || course.category__name || 'Chưa phân loại',
+                creatorId: String(course.creator_id || course.instructor__id || course.instructor_id || ''),
+                creatorName: course.creator_name || course.instructor__username || course.instructor?.username || 'GV',
+                isPurchased: Boolean(course.is_purchased),
+                createdAt: Date.parse(course.created_at || '') || 0,
+            };
+        }
+
+        function renderMyCourseCard(course) {
+            return `
+                <article class="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">${course.title}</h3>
+                        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">Creator</span>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">${course.categoryText}</p>
+                    <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        <span>Giá: theo từng video</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-block" href="course-detail.html?id=${course.id}">Xem chi tiết</a>
+                        <a class="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition font-medium inline-block" href="course-detail.html?id=${course.id}&mode=manage">Manage</a>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderFeaturedCourseCard(course) {
+            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(course.creatorName)}`;
+            const purchasedBadge = course.isPurchased
+                ? '<span class="course-owned-badge">Đã mua</span>'
+                : '';
+            const nameLink = course.creatorId
+                ? `<a href="channel.html?id=${course.creatorId}" class="text-blue-500 hover:underline">${course.creatorName}</a>`
+                : course.creatorName;
+
+            return `
+                <article class="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">${course.title}</h3>
+                        ${purchasedBadge}
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">${course.categoryText}</p>
+                    <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        <span>GV: <img src="${avatarUrl}" class="w-6 h-6 rounded-full inline-block mr-2" />${nameLink}</span>
+                        <span>Giá: theo từng video</span>
+                    </div>
+                    <a class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-block" href="course-detail.html?id=${course.id}">Xem chi tiết</a>
+                </article>
+            `;
+        }
+
+        async function loadCourses(searchText = '') {
+            const myGrid = document.getElementById('myCourseGrid');
+            const myEmpty = document.getElementById('myCourseEmpty');
+            const featuredGrid = document.getElementById('featuredCourseGrid');
+            const featuredEmpty = document.getElementById('featuredCourseEmpty');
+
+            myGrid.innerHTML = '';
+            featuredGrid.innerHTML = '';
+            myEmpty.classList.remove('hidden');
+            featuredEmpty.classList.remove('hidden');
+            myEmpty.innerText = 'Đang tải khóa học của bạn...';
+            featuredEmpty.innerText = 'Đang tải khóa học nổi bật...';
+
+            try {
+                const meIdRaw = localStorage.getItem('user_id') || sessionStorage.getItem('user_id') || '';
+                const meId = String(meIdRaw || '');
+
+                const res = await fetch('http://127.0.0.1:8000/api/courses/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await res.json();
+                const normalized = (data.courses || []).map(normalizeCoursePayload);
+                const query = searchText.trim().toLowerCase();
+
+                const filtered = normalized.filter((course) => {
+                    if (!query) return true;
+                    return (
+                        String(course.title || '').toLowerCase().includes(query)
+                        || String(course.categoryText || '').toLowerCase().includes(query)
+                        || String(course.creatorName || '').toLowerCase().includes(query)
+                    );
+                });
+
+                const myCourses = filtered.filter((course) => meId && String(course.creatorId) === meId);
+                const featuredCourses = filtered
+                    .filter((course) => !meId || String(course.creatorId) !== meId)
+                    .sort((a, b) => {
+                        if (a.isPurchased !== b.isPurchased) {
+                            return a.isPurchased ? -1 : 1;
+                        }
+                        return (b.createdAt || 0) - (a.createdAt || 0);
+                    });
+
+                if (!myCourses.length) {
+                    myEmpty.classList.remove('hidden');
+                    myEmpty.innerText = 'Bạn chưa tạo khóa học nào. Hãy bắt đầu ngay!';
+                } else {
+                    myEmpty.classList.add('hidden');
+                    myGrid.innerHTML = myCourses.map(renderMyCourseCard).join('');
+                }
+
+                if (!featuredCourses.length) {
+                    featuredEmpty.classList.remove('hidden');
+                    featuredEmpty.innerText = 'Chưa có khóa học nổi bật phù hợp.';
+                } else {
+                    featuredEmpty.classList.add('hidden');
+                    featuredGrid.innerHTML = featuredCourses.map(renderFeaturedCourseCard).join('');
+                }
+            } catch (err) {
+                myEmpty.classList.remove('hidden');
+                featuredEmpty.classList.remove('hidden');
+                myEmpty.innerText = 'Không tải được danh sách khóa học của bạn.';
+                featuredEmpty.innerText = 'Không tải được danh sách khóa học nổi bật.';
+            }
+        }
+
+        const courseSearchInput = document.getElementById('courseSearchInput');
+        const courseSearchBtn = document.getElementById('courseSearchBtn');
+
+        function runCourseSearch() {
+            const query = courseSearchInput?.value || '';
+            loadCourses(query);
+        }
+
+        if (courseSearchBtn) {
+            courseSearchBtn.addEventListener('click', runCourseSearch);
+        }
+
+        if (courseSearchInput) {
+            courseSearchInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    runCourseSearch();
+                }
+            });
+        }
+
+        window.addEventListener('hourskill:header-search', (event) => {
+            const query = event?.detail?.query || '';
+            if (courseSearchInput) {
+                courseSearchInput.value = query;
+            }
+            loadCourses(query);
+        });
+
+        loadCourses();
+    </script>
+</body>
+</html>

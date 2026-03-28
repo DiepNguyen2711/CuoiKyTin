@@ -9,50 +9,29 @@
     <script>
         tailwind.config = { darkMode: 'class' };
     </script>
-    <link rel="stylesheet" href="tailwind.css">
-    <script src="js/header-component.js"></script>
-    <script src="js/header-notifications.js"></script>
-    <script src="js/user-state.js"></script>
-    <script src="js/live-filter.js"></script>
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <script src="components/header-component.js"></script>
+    <script src="components/navigation-injector.js"></script>
+    <script src="api/header-notifications.js"></script>
+    <script src="api/user-state.js"></script>
+    <script src="api/live-filter.js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
-    <div id="appHeaderMount"></div>
+    <div id="header-placeholder"></div>
     <script>
-        if (window.HourskillHeader?.mount) {
-            window.HourskillHeader.mount({ pageTitle: 'TRANG CHỦ' });
+        if (window.HourskillNavigation?.inject) {
+            window.HourskillNavigation.inject({
+                headerTargetId: 'header-placeholder',
+                pageTitle: 'TRANG CHỦ',
+                hideSidebar: true,
+            });
         }
     </script>
 
     <div class="flex flex-1 relative">
-        
-        <aside class="w-64 bg-[#f1f5f9] dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6 fixed left-0 top-16 bottom-0 overflow-y-auto z-40 transition-colors duration-300">
-            <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Danh mục</h2>
-            <nav class="flex flex-col gap-1">   
-                <a href="#home" class="px-4 py-3 rounded text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-700 font-bold shadow-sm border border-gray-100 dark:border-gray-600 transition-colors">🏠 Trang chủ</a>
-                <a href="#courses" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">📚 Khóa học</a>
-                <a href="earn.html" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-green-600 transition-colors">💰 Kiếm TC</a>
-                <a href="#services" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">🔧 Dịch vụ</a>
-                <a href="teachers.html" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">👨‍🏫 Giáo viên</a>
-                <a href="#blog" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">✍️ Blog</a>
-                <a href="#contact" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">📧 Liên hệ</a>
-            </nav>
-        </aside>
+        <div id="sidebar-container"></div>
 
-        <main class="ml-64 flex-1 px-10 py-12 bg-white dark:bg-gray-900 min-h-[calc(100vh-4rem)] transition-colors duration-300">
-            <section class="mb-8">
-                <div class="home-search" role="search" aria-label="Tìm kiếm video nổi bật">
-                    <input
-                        type="text"
-                        id="featuredSearchInput"
-                        class="home-search-input"
-                        placeholder="Tìm kiếm khóa học..."
-                        autocomplete="off"
-                    >
-                    <button id="featuredSearchBtn" class="home-search-icon" type="button" aria-label="Tìm kiếm">
-                        🔍
-                    </button>
-                </div>
-            </section>
+        <main class="ml-64 flex-1 px-10 py-12 bg-white dark:bg-gray-900 min-h-[calc(100vh-70px)] transition-colors duration-300">
             <section id="home" class="mb-12">
                 <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-4 transition-colors">Xin chào bạn đến với HOURSKILLS!</h1>
                 
@@ -63,35 +42,17 @@
                 </div>
                 
                 <p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed transition-colors">Nền tảng học trực tuyến hàng đầu với các khóa học chất lượng cao từ các giáo viên giàu kinh nghiệm.</p>
-
-                <div class="mt-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Video nổi bật</h2>
-                        <span class="text-sm text-gray-500 dark:text-gray-400">Chỉ video độc lập</span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="standaloneGrid">
-                        <p class="text-gray-500" id="standaloneEmpty">Đang tải video...</p>
-                    </div>
-                </div>
             </section>
 
-            <section id="courses" class="mb-16">
-                <div class="flex justify-between items-center mb-6">
-
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2 transition-colors">
-        <span class="w-2 h-8 bg-blue-500 rounded"></span> Khóa học nổi bật
-    </h2>
-
-    <a href="create_course.html"
-       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition">
-       ➕ Tạo khóa học
-    </a>
-
-</div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="courseGrid">
-                    <p class="text-gray-500" id="courseEmpty">Đang tải khóa học...</p>
+            <section id="featured-videos" class="mb-16" aria-label="Video nổi bật">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2 transition-colors">
+                        <span class="w-2 h-8 bg-blue-500 rounded"></span> Video nổi bật
+                    </h2>
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8" id="standaloneGrid"></div>
+                <p id="standaloneEmpty" class="text-gray-500 dark:text-gray-400">Đang tải video nổi bật...</p>
             </section>
         </main>
     </div>
@@ -102,10 +63,12 @@
         </div>
     </footer>
 
+    <script src="js/components/sidebar.js"></script>
     <script>
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        if (window.loadSidebar) {
+            window.loadSidebar();
+        }
+
         const htmlRoot = document.getElementById('html-root');
 
         function initTheme() {
@@ -114,49 +77,12 @@
 
             if (wantsDark) {
                 htmlRoot.classList.add('dark');
-                if (themeToggleLightIcon) {
-                    themeToggleLightIcon.classList.remove('hidden');
-                }
-                if (themeToggleDarkIcon) {
-                    themeToggleDarkIcon.classList.add('hidden');
-                }
             } else {
                 htmlRoot.classList.remove('dark');
-                if (themeToggleDarkIcon) {
-                    themeToggleDarkIcon.classList.remove('hidden');
-                }
-                if (themeToggleLightIcon) {
-                    themeToggleLightIcon.classList.add('hidden');
-                }
             }
         }
 
         initTheme();
-
-        if (themeToggleBtn) {
-            themeToggleBtn.addEventListener('click', function() {
-                const isDark = htmlRoot.classList.contains('dark');
-                if (isDark) {
-                    htmlRoot.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                    if (themeToggleDarkIcon) {
-                        themeToggleDarkIcon.classList.remove('hidden');
-                    }
-                    if (themeToggleLightIcon) {
-                        themeToggleLightIcon.classList.add('hidden');
-                    }
-                } else {
-                    htmlRoot.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                    if (themeToggleDarkIcon) {
-                        themeToggleDarkIcon.classList.add('hidden');
-                    }
-                    if (themeToggleLightIcon) {
-                        themeToggleLightIcon.classList.remove('hidden');
-                    }
-                }
-            });
-        }
 
         const token = localStorage.getItem('token');
         if (!token) {
@@ -197,26 +123,6 @@
         }
 
         window.syncUserData = syncUserData;
-
-        async function loadProfileBalance() {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-            try {
-                const res = await fetch('http://127.0.0.1:8000/api/user-profile/', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-                if (typeof data.balance !== 'undefined') {
-                    updateBalanceDisplay(data.balance);
-                }
-            } catch (err) {
-                // swallow errors to avoid blocking other scripts
-                console.error('Failed to load profile balance', err);
-            }
-        }
 
         function formatTcDisplay(value) {
             return Math.floor(Number(value || 0)).toLocaleString('vi-VN');
@@ -282,299 +188,89 @@
 
         initHeaderNotifications({ apiBase: 'http://127.0.0.1:8000', token });
 
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user_id');
-                localStorage.removeItem('wallet_balance');
-                localStorage.removeItem('username');
-                localStorage.removeItem('is_vip');
-                window.location.href = 'login.html';
-            });
-        }
-        
-        const userInfo = document.getElementById('userInfo');
-        if (userInfo) {
-            userInfo.addEventListener('click', () => {
-                window.location.href = 'profile.html';
-            });
+        const fallbackThumb = 'https://placehold.co/640x360/0b1f4d/FFFFFF?text=HourSkill';
+
+        function resolveThumbnail(video) {
+            const candidates = [
+                video?.thumbnail,
+                video?.thumbnail_url,
+                video?.thumbnailUrl,
+                video?.image,
+                video?.image_url,
+            ];
+
+            const picked = candidates.find((value) => typeof value === 'string' && value.trim());
+            return picked || fallbackThumb;
         }
 
-        async function loadCourses(searchText = '') {
-            const grid = document.getElementById('courseGrid');
-            const empty = document.getElementById('courseEmpty');
-            empty.classList.remove('hidden');
-            empty.innerText = 'Đang tải khóa học...';
-            grid.innerHTML = '';
-
-            try {
-                const res = await fetch("http://127.0.0.1:8000/api/courses/", {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                const courses = (data.courses || []).filter(c => {
-                    if (!searchText) return true;
-                    return c.title.toLowerCase().includes(searchText.toLowerCase());
-                });
-
-                if (courses.length === 0) {
-                    empty.classList.remove('hidden');
-                    empty.innerText = 'Chưa có khóa học phù hợp.';
-                    return;
-                }
-
-                empty.classList.add('hidden');
-
-                courses.forEach(course => {
-                    const card = document.createElement('div');
-                    card.className = 'bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition duration-300 course-card';
-                    // derive instructor id safely from whatever payload property exists
-                    let instructorId = course.instructor__id || course.instructor_id || (course.instructor && course.instructor.id) || course.instructor;
-                    let instructorName = course.instructor__username || course.instructor?.username || 'GV';
-                    // construct avatar plus name link
-                    let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(instructorName)}`;
-                    let nameLink = instructorName;
-                    if (instructorId) {
-                        nameLink = `<a href="channel.html?id=${instructorId}" class="text-blue-500 hover:underline">${instructorName}</a>`;
-                    }
-                    let instructorHtmlFormatted = `<img src="${avatarUrl}" class="w-6 h-6 rounded-full inline-block mr-2" />${nameLink}`;
-                    card.innerHTML = `
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">${course.title}</h3>
-                        <p class="text-gray-600 dark:text-gray-400 mb-4">${course.category__name || 'Chưa phân loại'}</p>
-                        <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
-                            <span>GV: ${instructorHtmlFormatted}</span>
-                            <span>Giá gói: ${course.bundle_price_tc} TC</span>
-                        </div>
-                        <a class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-block" href="video-detail.html?course_id=${course.id}&id=${course.id}">Xem chi tiết</a>
-                    `;
-                    grid.appendChild(card);
-                });
-
-            } catch (err) {
-                empty.classList.remove('hidden');
-                empty.innerText = 'Không tải được danh sách khóa học.';
-            }
+        function escapeHtml(text) {
+            return String(text || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
         }
 
-        async function loadStandaloneVideos() {
+        function renderFeaturedVideoCard(video) {
+            const title = video?.title || 'Video chưa có tiêu đề';
+            const creator = video?.creator || 'Unknown Creator';
+            const tc = Number(video?.price_tc || 0);
+            const thumb = resolveThumbnail(video);
+
+            return `
+                <a href="video-detail.html?id=${video.id}" class="featured-video-card block bg-slate-900 rounded-xl overflow-hidden border border-slate-700 hover:shadow-lg transition">
+                    <div class="relative w-full aspect-video bg-black">
+                        <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.src='${fallbackThumb}'" />
+                        <span class="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">${tc} TC</span>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="featured-video-title font-semibold text-white line-clamp-2">${escapeHtml(title)}</h3>
+                        <p class="featured-video-creator text-sm text-slate-300 mt-2">${escapeHtml(creator)}</p>
+                    </div>
+                </a>
+            `;
+        }
+
+        async function loadFeaturedVideos() {
             const grid = document.getElementById('standaloneGrid');
             const empty = document.getElementById('standaloneEmpty');
+
             if (!grid || !empty) return;
 
-            empty.classList.remove('hidden');
-            empty.innerText = 'Đang tải video...';
             grid.innerHTML = '';
+            empty.classList.remove('hidden');
+            empty.innerText = 'Đang tải video nổi bật...';
 
             try {
                 const res = await fetch('http://127.0.0.1:8000/api/manage/videos/?standalone=1', {
                     headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                        Authorization: `Bearer ${token}`,
+                    },
                 });
-
                 const data = await res.json();
-                const videos = Array.isArray(data.videos) ? data.videos : [];
+
+                // Debug payload from API to verify file_url/thumbnail values in browser console.
+                console.log('[Home][FeaturedVideos] API payload:', data);
+
+                const allVideos = Array.isArray(data?.videos) ? data.videos : [];
+                const creatorVideos = allVideos.filter((video) => String(video?.creator || '').toLowerCase() === 'diep');
+                const videos = (creatorVideos.length ? creatorVideos : allVideos).slice(0, 3);
 
                 if (!res.ok || videos.length === 0) {
-                    empty.classList.remove('hidden');
-                    empty.innerText = 'Chưa có video độc lập.';
+                    empty.innerText = 'Chưa có video nổi bật để hiển thị.';
                     return;
                 }
 
+                grid.innerHTML = videos.map(renderFeaturedVideoCard).join('');
                 empty.classList.add('hidden');
-
-                videos.forEach((video) => {
-                    const card = document.createElement('a');
-                    card.href = `video-detail.html?id=${video.id}`;
-                    card.className = 'featured-video-card block bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition';
-                    card.dataset.title = String(video.title || '').toLowerCase();
-                    card.dataset.creator = String(video.creator || '').toLowerCase();
-
-                    const thumb = video.thumbnail || 'https://placehold.co/640x360/111827/FFFFFF?text=HourSkill';
-                    const creator = video.creator || 'Unknown Creator';
-                    const price = Number(video.price_tc ?? 0);
-
-                    card.innerHTML = `
-                        <div class="relative w-full aspect-video bg-black">
-                            <img src="${thumb}" alt="${video.title}" class="w-full h-full object-cover" loading="lazy" />
-                            <span class="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">${price} TC</span>
-                        </div>
-                        <div class="p-4">
-                            <h3 class="featured-video-title font-semibold text-gray-900 dark:text-white line-clamp-2">${video.title}</h3>
-                            <p class="featured-video-creator text-sm text-gray-600 dark:text-gray-400 mt-2">${creator}</p>
-                        </div>
-                    `;
-
-                    grid.appendChild(card);
-                });
-
-                filterFeaturedVideos(document.getElementById('featuredSearchInput')?.value || '');
-            } catch (err) {
-                empty.classList.remove('hidden');
-                empty.innerText = 'Không tải được video độc lập.';
+            } catch (error) {
+                console.error('[Home][FeaturedVideos] Failed to load videos:', error);
+                empty.innerText = 'Không tải được video nổi bật.';
             }
         }
 
-        function filterFeaturedVideos(searchText = '') {
-            const grid = document.getElementById('standaloneGrid');
-            const empty = document.getElementById('standaloneEmpty');
-            if (!grid || !empty) return;
-
-            const query = searchText.trim().toLowerCase();
-            const cards = Array.from(grid.querySelectorAll('.featured-video-card'));
-
-            if (cards.length === 0) {
-                return;
-            }
-
-            let visibleCount = 0;
-            cards.forEach((card) => {
-                const title = card.dataset.title || card.querySelector('.featured-video-title')?.textContent?.toLowerCase() || '';
-                const creator = card.dataset.creator || card.querySelector('.featured-video-creator')?.textContent?.toLowerCase() || '';
-                const matched = !query || `${title} ${creator}`.includes(query);
-                card.classList.toggle('is-filter-hidden', !matched);
-                if (matched) {
-                    visibleCount += 1;
-                }
-            });
-
-            if (visibleCount === 0) {
-                empty.classList.remove('hidden');
-                empty.innerText = 'Không tìm thấy video phù hợp.';
-            } else {
-                empty.classList.add('hidden');
-            }
-        }
-
-        const featuredSearchInput = document.getElementById('featuredSearchInput');
-        const featuredSearchBtn = document.getElementById('featuredSearchBtn');
-        const featuredFilter = window.HourskillLiveFilter?.create({
-            inputEl: featuredSearchInput,
-            buttonEl: featuredSearchBtn,
-            getItems: () => Array.from(document.querySelectorAll('.featured-video-card')),
-            getText: (card) => [
-                card.dataset.title || '',
-                card.dataset.creator || '',
-            ].join(' '),
-            onAfterFilter: ({ visibleCount, query }) => {
-                const empty = document.getElementById('standaloneEmpty');
-                if (!empty) return;
-                if (!query) {
-                    empty.classList.add('hidden');
-                    return;
-                }
-                if (visibleCount === 0) {
-                    empty.classList.remove('hidden');
-                    empty.innerText = 'Không tìm thấy video phù hợp.';
-                } else {
-                    empty.classList.add('hidden');
-                }
-            }
-        });
-
-        window.addEventListener('hourskill:header-search', (event) => {
-            const query = event?.detail?.query || '';
-            if (featuredSearchInput) {
-                featuredSearchInput.value = query;
-                featuredSearchInput.focus();
-            }
-            if (featuredFilter) {
-                featuredFilter.apply(query);
-            } else {
-                filterFeaturedVideos(query);
-            }
-        });
-
-        loadCourses();
-        loadStandaloneVideos();
-
-        const navLinks = Array.from(document.querySelectorAll('aside nav a'));
-        const homeSection = document.getElementById('home');
-        const coursesSection = document.getElementById('courses');
-
-        const activeClasses = [
-            'text-blue-600',
-            'dark:text-blue-400',
-            'bg-white',
-            'dark:bg-gray-700',
-            'font-bold',
-            'shadow-sm',
-            'border',
-            'border-gray-100',
-            'dark:border-gray-600',
-        ];
-
-        const inactiveClasses = [
-            'text-gray-700',
-            'dark:text-gray-300',
-            'hover:bg-white',
-            'dark:hover:bg-gray-700',
-            'hover:text-blue-600',
-            'dark:hover:text-blue-400',
-        ];
-
-        function setActiveSidebarLink(targetHref) {
-            navLinks.forEach((link) => {
-            const isActive = link.getAttribute('href') === targetHref;
-
-                link.classList.remove(...activeClasses, ...inactiveClasses);
-
-                if (isActive) {
-                    link.classList.add(...activeClasses);
-                } else {
-                    link.classList.add(...inactiveClasses);
-                }
-            });
-        }
-
-        function setSectionVisibilityByHash(rawHash) {
-            const hash = rawHash || '#home';
-
-            if (homeSection && coursesSection) {
-                if (hash === '#courses') {
-                    homeSection.style.display = 'none';
-                    coursesSection.style.display = 'block';
-                } else {
-                    homeSection.style.display = 'block';
-                    coursesSection.style.display = 'none';
-                }
-            }
-
-            setActiveSidebarLink(hash === '#courses' ? '#courses' : '#home');
-        }
-
-        function handleHashState() {
-            const currentHash = window.location.hash || '#home';
-            setSectionVisibilityByHash(currentHash);
-        }
-
-        navLinks.forEach((link) => {
-            link.addEventListener('click', (event) => {
-                const targetHref = link.getAttribute('href');
-                if (!targetHref) {
-                    return;
-                }
-
-                setActiveSidebarLink(targetHref);
-
-                if (!targetHref.startsWith('#')) {
-                    return;
-                }
-
-                event.preventDefault();
-                if (window.location.hash !== targetHref) {
-                    window.location.hash = targetHref;
-                } else {
-                    setSectionVisibilityByHash(targetHref);
-                }
-            });
-        });
-
-        window.addEventListener('hashchange', handleHashState);
-        handleHashState();
+        loadFeaturedVideos();
     </script>
 </body>
 </html>

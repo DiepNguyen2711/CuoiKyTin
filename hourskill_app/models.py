@@ -40,6 +40,14 @@ class Video(models.Model):
     title = models.CharField(max_length=255, db_index=True)
     # Optional course grouping for structured learning paths
     course = models.ForeignKey('Course', on_delete=models.CASCADE, related_name='videos', null=True, blank=True)
+    # Optional prerequisite video that must be completed before unlocking this video
+    prerequisite_video = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='dependent_videos'
+    )
     # Top-level thematic category
     category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='videos')
     # Owner/creator of the video
@@ -187,12 +195,12 @@ class Course(models.Model):
 
     title = models.CharField(max_length=255, verbose_name="Tên khóa học", db_index=True)
     description = models.TextField(verbose_name="Mô tả chi tiết")
-    # Optional category to group courses by topic
-    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, related_name='courses')
+    # Optional legacy category relation kept for backward compatibility
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True, related_name='courses')
+    # Free-text category used by course creation UI
+    category_text = models.CharField(max_length=120, blank=True, default='')
     # Course owner/teacher (creator)
     instructor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='taught_courses')
-    # Price for the full bundle in TC
-    bundle_price_tc = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Giá trọn bộ (TC)")
     # Soft-delete flag to keep history while hiding from listings
     is_active = models.BooleanField(default=True)
     # Soft-delete flag to prevent hard deletes that break ledger history

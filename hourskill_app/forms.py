@@ -6,15 +6,11 @@ from .models import Course, Video
 class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
-        fields = ["title", "description", "category", "bundle_price_tc"]
+        fields = ["title", "description", "category_text"]
 
-    def clean_bundle_price_tc(self):
-        price = self.cleaned_data.get("bundle_price_tc")
-        if price is None:
-            return price
-        if price < 0:
-            raise forms.ValidationError("Giá không được âm.")
-        return price
+    def clean_category_text(self):
+        category_text = (self.cleaned_data.get("category_text") or "").strip()
+        return category_text[:120]
 
 
 class VideoForm(forms.ModelForm):

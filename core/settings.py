@@ -14,21 +14,41 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from corsheaders.defaults import default_headers
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+env_path = BASE_DIR / '.env'
 
-# Load environment variables from a local .env when present (safe for dev)
-load_dotenv(BASE_DIR / ".env")
+# Ép buộc in ra đường dẫn để kiểm tra trong Terminal
+print(f"--- DEBUG: Checking for .env at: {env_path} ---")
+
+if env_path.exists():
+    print("--- DEBUG: .env file found, reading with dotenv_values... ---")
+    env_config = dotenv_values(env_path)
+else:
+    print("--- DEBUG: .env file NOT FOUND at this path! ---")
+    env_config = {}
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
+SECRET_KEY = str(env_config.get('SECRET_KEY') or '').strip().replace("'", "").replace('"', '')
+
+if not SECRET_KEY:
+    from dotenv import load_dotenv
+
+    load_dotenv(env_path)
+    SECRET_KEY = os.getenv('SECRET_KEY', '').strip().replace("'", "").replace('"', '')
+
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        f"Không thể tìm thấy SECRET_KEY! Hãy chắc chắn file {env_path} có dòng SECRET_KEY=..."
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default to True locally; allow env var override (accepts 1/true/yes/on)
@@ -159,28 +179,41 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 ]
 
 # Media storage: use cloud provider via django-storages (Cloudinary or S3)
-STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'cloudinary').lower()
+STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local').lower()
+_media_url_override = (os.getenv('MEDIA_URL') or '').strip()
+
+# Always define local media path for development and safe fallback.
+MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = _media_url_override or '/media/'
 
 if STORAGE_BACKEND == 'cloudinary':
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-        'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-        'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
-    }
-    MEDIA_URL = os.getenv('MEDIA_URL', 'https://res.cloudinary.com/')
+    cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+    api_key = os.getenv('CLOUDINARY_API_KEY')
+    api_secret = os.getenv('CLOUDINARY_API_SECRET')
+
+    # Fallback to local storage when cloud credentials are not configured.
+    if cloud_name and api_key and api_secret:
+        DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+        CLOUDINARY_STORAGE = {
+            'CLOUD_NAME': cloud_name,
+            'API_KEY': api_key,
+            'API_SECRET': api_secret,
+        }
+        MEDIA_URL = _media_url_override or 'https://res.cloudinary.com/'
 elif STORAGE_BACKEND == 's3':
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
-    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')
-    AWS_QUERYSTRING_AUTH = False  # Signed URLs not needed for public assets
-    AWS_DEFAULT_ACL = None
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN')
-    _bucket_domain = AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-    MEDIA_URL = os.getenv('MEDIA_URL', f"https://{_bucket_domain}/")
-else:
-    raise ValueError("Unsupported STORAGE_BACKEND. Use 'cloudinary' or 's3'.")
+    bucket_name = os.getenv('AWS_STORAGE_BUCKET_NAME')
+    if bucket_name:
+        DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+        AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+        AWS_STORAGE_BUCKET_NAME = bucket_name
+        AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
+        AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')
+        AWS_QUERYSTRING_AUTH = False  # Signed URLs not needed for public assets
+        AWS_DEFAULT_ACL = None
+        AWS_S3_FILE_OVERWRITE = False
+        AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN')
+        _bucket_domain = AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+        MEDIA_URL = _media_url_override or f"https://{_bucket_domain}/"
+elif STORAGE_BACKEND != 'local':
+    raise ValueError("Unsupported STORAGE_BACKEND. Use 'local', 'cloudinary' or 's3'.")

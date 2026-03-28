@@ -4,13 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đăng nhập - HourSkill</title>
-  <link rel="stylesheet" href="tailwind.css">
-  <style>
-    input[type="password"]::-ms-reveal,
-    input[type="password"]::-ms-clear {
-      display: none;
-    }
-  </style>
+  <link rel="stylesheet" href="assets/tailwind.css">
 </head>
 <body>
   <div class="auth-container">
@@ -45,6 +39,7 @@
     </div>
   </div>
 
+  <script src="assets/js/alerts.js"></script>
   <script>
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
@@ -71,6 +66,7 @@
 
       if (!email || !password) {
         errorText.innerText = "Vui lòng nhập đầy đủ Email và Mật khẩu!";
+        window.showAlert?.("Vui lòng nhập đầy đủ Email và Mật khẩu!", "error");
         return;
       }
 
@@ -96,15 +92,18 @@
           if (data.user_id) {
             localStorage.setItem('user_id', data.user_id);
           }
+          window.showAlert?.("Đăng nhập thành công", "success");
           window.location.href = "main.html";
         } else {
           errorText.innerText = data.message || "Sai thông tin đăng nhập!";
+          window.showAlert?.(data.message || "Sai thông tin đăng nhập!", "error");
           loginBtn.innerText = "Đăng nhập";
           loginBtn.disabled = false;
           loginBtn.style.opacity = "1";
         }
       } catch (error) {
         errorText.innerText = "Lỗi kết nối mạng, vui lòng thử lại!";
+        window.showAlert?.("Lỗi kết nối mạng, vui lòng thử lại!", "error");
         loginBtn.innerText = "Đăng nhập";
         loginBtn.disabled = false;
         loginBtn.style.opacity = "1";
