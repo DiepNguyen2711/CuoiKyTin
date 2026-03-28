@@ -336,6 +336,48 @@ def _can_watch_video(user, video):
     return VideoAccess.objects.filter(user=user, video=video).exists()
 
 
+def _is_video_completed(user, video):
+    """Determine completion using watch progress against video duration."""
+    if not user or not video:
+        return False
+    required_seconds = max(1, int(video.duration_seconds or 0))
+    session = WatchSession.objects.filter(user=user, video=video).first()
+    if not session:
+        return False
+    return int(session.watched_seconds or 0) >= required_seconds
+
+
+def _prerequisite_gate(user, video):
+    """Return whether a user can unlock video based on prerequisite completion."""
+    prereq = getattr(video, 'prerequisite_video', None)
+    if not prereq:
+        return True, None, ''
+
+    if not user:
+        return False, prereq.id, prereq.title
+
+    if user.id == video.creator_id:
+        return True, prereq.id, prereq.title
+
+    vip_active, _ = _refresh_vip_state(user)
+    if vip_active:
+        return True, prereq.id, prereq.title
+
+    if _is_video_completed(user, prereq):
+        return True, prereq.id, prereq.title
+
+    return False, prereq.id, prereq.title
+
+
+def _creator_avg_rating(user):
+    """Average rating across all creator videos; returns float in [0, 5]."""
+    agg = CommentReview.objects.filter(
+        video__creator=user,
+        rating__isnull=False,
+    ).aggregate(avg=Avg('rating'))
+    return float(agg.get('avg') or 0)
+
+
 def _process_video_purchase(user, video):
     """Unlock a specific video for the user with atomic TC deduction and 70/30 split."""
     price_int, avg_rating = _compute_dynamic_price_tc(video)
@@ -943,19 +985,18 @@ def api_course_list_create(request):
     """List active courses or create a new course (creators only)."""
     if request.method == 'GET':
         q = request.GET.get('q', '').strip()
-        category_id = request.GET.get('category')
+        category_text = (request.GET.get('category') or '').strip()
         qs = Course.objects.filter(is_deleted=False, is_active=True)
         if q:
             qs = qs.filter(Q(title__icontains=q))
-        if category_id:
-            qs = qs.filter(category_id=category_id)
+        if category_text:
+            qs = qs.filter(category_text__icontains=category_text)
         data = [
             {
                 'id': c.id,
                 'title': c.title,
                 'description': c.description,
-                'bundle_price_tc': float(c.bundle_price_tc),
-                'category': c.category.name if c.category else None,
+                'category': c.category_text,
                 'instructor': c.instructor.username,
             }
             for c in qs.order_by('-created_at')
@@ -973,7 +1014,9 @@ def api_course_list_create(request):
         except ValueError as exc:
             return _json_error(str(exc), status=400)
 
-        form = CourseForm(data)
+        payload = dict(data)
+        payload['category_text'] = (data.get('category_text') or data.get('category') or '').strip()
+        form = CourseForm(payload)
         if not form.is_valid():
             return _json_error(form.errors.as_json(), status=400)
 
@@ -985,7 +1028,6 @@ def api_course_list_create(request):
             'id': course.id,
             'title': course.title,
             'description': course.description,
-            'bundle_price_tc': float(course.bundle_price_tc),
         }, status=201)
 
     return _json_error('Method not allowed', status=405)
@@ -1001,12 +1043,21 @@ def api_course_detail(request, course_id):
 
     if request.method == 'GET':
         viewer = _get_auth_user(request)
-        videos = Video.objects.filter(course=course, is_deleted=False, is_active=True).order_by('created_at')
+        videos = Video.objects.filter(course=course, is_deleted=False, is_active=True).select_related('prerequisite_video').order_by('created_at')
         unlocked_video_ids = set()
+        completed_video_ids = set()
         if viewer:
             unlocked_video_ids = set(
                 VideoAccess.objects.filter(user=viewer, video__course=course).values_list('video_id', flat=True)
             )
+            course_video_ids = [v.id for v in videos]
+            if course_video_ids:
+                progress = WatchSession.objects.filter(user=viewer, video_id__in=course_video_ids).values_list('video_id', 'watched_seconds')
+                duration_map = {v.id: max(1, int(v.duration_seconds or 0)) for v in videos}
+                completed_video_ids = {
+                    vid for vid, watched in progress
+                    if int(watched or 0) >= int(duration_map.get(vid, 1))
+                }
 
         lessons = []
         viewer_is_vip = False
@@ -1018,27 +1069,39 @@ def api_course_detail(request, course_id):
             if lesson.is_free:
                 computed_price = 0
             is_unlocked = False
+            prerequisite_completed = True
+            prerequisite_id = lesson.prerequisite_video_id
+            prerequisite_title = lesson.prerequisite_video.title if lesson.prerequisite_video else ''
+            if lesson.prerequisite_video_id and viewer:
+                prerequisite_completed = lesson.prerequisite_video_id in completed_video_ids
+            if lesson.prerequisite_video_id and not viewer:
+                prerequisite_completed = False
             if viewer:
                 is_owner = lesson.creator_id == viewer.id or course.instructor_id == viewer.id
                 is_unlocked = is_owner or viewer_is_vip or lesson.id in unlocked_video_ids or computed_price == 0
+                if is_owner or viewer_is_vip or computed_price == 0:
+                    prerequisite_completed = True
+            can_access = bool(is_unlocked or prerequisite_completed)
             lessons.append({
                 'id': lesson.id,
                 'title': lesson.title,
-                # Keep both keys for frontend compatibility while standardizing on duration_seconds.
                 'duration_seconds': duration_seconds,
-                'duration': duration_seconds,
                 'price_tc': computed_price,
                 'is_free': bool(lesson.is_free),
                 'is_unlocked': is_unlocked,
+                'prerequisite_id': prerequisite_id,
+                'prerequisite_title': prerequisite_title,
+                'prerequisite_completed': bool(prerequisite_completed),
+                'can_access': can_access,
             })
 
         return _json_success({
             'id': course.id,
             'title': course.title,
             'description': course.description,
-            'bundle_price_tc': float(course.bundle_price_tc),
-            'category': course.category.name if course.category else None,
+            'category': course.category_text,
             'instructor': course.instructor.username,
+            'instructor_id': course.instructor_id,
             'videos': lessons,
         })
 
@@ -1209,19 +1272,19 @@ def api_video_detail(request, video_id):
 def homepage(request):
     """Public homepage listing active courses with optional search filters."""
     q = request.GET.get('q', '').strip()
-    category_id = request.GET.get('category')
+    category_text = (request.GET.get('category') or '').strip()
     courses = Course.objects.filter(is_deleted=False, is_active=True)
     if q:
         courses = courses.filter(title__icontains=q)
-    if category_id:
-        courses = courses.filter(category_id=category_id)
+    if category_text:
+        courses = courses.filter(category_text__icontains=category_text)
 
     categories = Category.objects.all()
 
     context = {
         'courses': courses.order_by('-created_at'),
         'query': q,
-        'category_id': category_id,
+        'category_id': category_text,
         'categories': categories,
     }
     return render(request, 'main.html', context)
@@ -1252,6 +1315,13 @@ def api_get_video_detail(request, video_id):
 
     locked = not has_access
     following = Follow.objects.filter(follower=user, following=video.creator).exists()
+    can_unlock_by_prerequisite, prerequisite_id, prerequisite_title = _prerequisite_gate(user, video)
+    prerequisite_completed = True
+    if prerequisite_id:
+        prerequisite_completed = _is_video_completed(user, video.prerequisite_video)
+    if is_owner or vip_active or dynamic_price_tc == 0:
+        can_unlock_by_prerequisite = True
+        prerequisite_completed = True
 
     data = {
         'id': video.id,
@@ -1265,6 +1335,10 @@ def api_get_video_detail(request, video_id):
         'is_free': bool(video.is_free),
         'is_vip': bool(vip_active),
         'avg_rating': avg_rating,
+        'prerequisite_id': prerequisite_id,
+        'prerequisite_title': prerequisite_title,
+        'prerequisite_completed': bool(prerequisite_completed),
+        'can_unlock_by_prerequisite': bool(can_unlock_by_prerequisite),
         'videoUrl': None if locked else _safe_file_url(request, video.file_url),
         'watchSessionId': session.id,
         'creator': {
@@ -1286,9 +1360,13 @@ def api_unlock_video(request, video_id):
         return auth_error
 
     try:
-        video = Video.objects.get(id=video_id, is_active=True)
+        video = Video.objects.select_related('prerequisite_video').get(id=video_id, is_active=True)
     except Video.DoesNotExist:
         return _json_error('Video không tồn tại!', status=404)
+
+    is_allowed, _, prereq_title = _prerequisite_gate(user, video)
+    if not is_allowed:
+        return _json_error(f'Bạn cần hoàn thành {prereq_title} để mở khóa bài này!', status=403)
 
     payload, error = _process_video_purchase(user, video)
     if error:
@@ -1314,31 +1392,72 @@ def api_unlock_video_by_body(request):
         return _json_error('Thiếu video_id!', status=400)
 
     try:
-        video = Video.objects.get(id=video_id, is_active=True, is_deleted=False)
+        video = Video.objects.select_related('prerequisite_video').get(id=video_id, is_active=True, is_deleted=False)
     except Video.DoesNotExist:
         return _json_error('Video không tồn tại!', status=404)
+
+    is_allowed, _, prereq_title = _prerequisite_gate(user, video)
+    if not is_allowed:
+        return _json_error(f'Bạn cần hoàn thành {prereq_title} để mở khóa bài này!', status=403)
 
     payload, error = _process_video_purchase(user, video)
     if error:
         return error
 
     return _json_success({'message': 'Mở khóa video thành công!', **payload})
+
+
+@require_GET
+def api_creator_price_eligibility(request):
+    """API: return whether creator can manually override per-video price."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    avg_rating = round(_creator_avg_rating(user), 2)
+    eligible = avg_rating > 4.5
+    return _json_success({
+        'eligible': eligible,
+        'avg_rating': avg_rating,
+        'min_override_tc': 1,
+        'max_override_tc': 5,
+    })
+
+
 @require_GET
 def api_get_courses(request):
     """API: Return active courses and categories for catalog display."""
+    viewer = _get_auth_user(request)
     categories = list(Category.objects.values('id', 'name'))  # Used for filters
 
-    courses = list(
-        Course.objects.filter(is_active=True).values(
-            'id',
-            'title',
-            'bundle_price_tc',
-            'category__name',
-            'instructor__username',
-            # include potential instructor id to support safe channel links later
-            'instructor__id',
+    purchased_course_ids = set()
+    if viewer:
+        purchased_course_ids = set(
+            VideoAccess.objects.filter(user=viewer, video__course__isnull=False)
+            .values_list('video__course_id', flat=True)
+            .distinct()
         )
+
+    course_qs = (
+        Course.objects.filter(is_active=True, is_deleted=False)
+        .select_related('instructor')
+        .order_by('-created_at')
     )
+
+    courses = [
+        {
+            'id': course.id,
+            'title': course.title,
+            'category_text': course.category_text,
+            'creator_id': course.instructor_id,
+            'creator_name': course.instructor.username,
+            'instructor__id': course.instructor_id,
+            'instructor__username': course.instructor.username,
+            'is_purchased': bool(course.id in purchased_course_ids),
+            'created_at': course.created_at.isoformat(),
+        }
+        for course in course_qs
+    ]
 
     return _json_success({'categories': categories, 'courses': courses})
 
@@ -1706,99 +1825,6 @@ def api_withdraw_request(request):
         'remaining_available_vnd': _tc_to_int(account.available_vnd),
     })
 
-
-@csrf_exempt
-@require_POST
-def api_purchase_course(request):
-    """API: Purchase a course bundle using TC with strict balance check."""
-    user, auth_error = _require_auth(request)
-    if auth_error:
-        return auth_error
-
-    try:
-        data = _parse_json_body(request)
-    except ValueError as exc:
-        return _json_error(str(exc), status=400)
-
-    course_id = data.get('course_id')
-    if not course_id:
-        return _json_error('Thiếu course_id!', status=400)
-
-    try:
-        course = Course.objects.get(id=course_id, is_active=True, is_deleted=False)
-    except Course.DoesNotExist:
-        return _json_error('Khóa học không tồn tại!', status=404)
-
-    # Normalize price to Decimal for safe arithmetic
-    price = Decimal(course.bundle_price_tc)
-    price_int = _tc_to_int(price)
-    if price_int <= 0:
-        return _json_success({
-            'message': 'Khóa học miễn phí.',
-            'remaining_tc': _tc_to_int(_get_or_create_profile(user).wallet_balance),
-        })
-
-    vip_active, _ = _refresh_vip_state(user)
-    if vip_active:
-        return _json_success({
-            'message': 'Tài khoản VIP mở khóa miễn phí khóa học.',
-            'remaining_tc': _tc_to_int(_get_or_create_profile(user).wallet_balance),
-        })
-
-    try:
-        with transaction.atomic():
-            buyer_profile = UserProfile.objects.select_for_update().get_or_create(
-                user=user,
-                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
-            )[0]
-            buyer_wallet = _lock_wallet(user)
-            buyer_balance_int = _profile_balance_tc_int(buyer_profile)
-            if buyer_balance_int < price_int:
-                return _json_error('Insufficient funds', status=400)
-
-            next_balance = buyer_balance_int - price_int
-            UserProfile.objects.filter(pk=buyer_profile.pk).update(
-                balance_tc=F('balance_tc') - Decimal(str(price_int)),
-                wallet_balance=F('wallet_balance') - price_int,
-            )
-            Wallet.objects.filter(pk=buyer_wallet.pk).update(balance=F('balance') - Decimal(str(price_int)))
-
-            creator_share_vnd = int(price_int * 0.7 * 100)
-            if user.id != course.instructor_id and creator_share_vnd > 0:
-                creator_account = CreatorAccount.objects.select_for_update().get_or_create(user=course.instructor)[0]
-                CreatorAccount.objects.filter(pk=creator_account.pk).update(
-                    pending_vnd=F('pending_vnd') + Decimal(str(creator_share_vnd)),
-                    total_earned_vnd=F('total_earned_vnd') + Decimal(str(creator_share_vnd)),
-                )
-
-            Transaction.objects.create(
-                sender=user,
-                receiver=course.instructor,
-                tx_type='CONTENT_SALE',
-                amount_tc=price,
-                tc_added=Decimal('0.00'),
-                reference_video=None,
-                status='SUCCESS',
-            )
-
-            if user.id != course.instructor_id and creator_share_vnd > 0:
-                Transaction.objects.create(
-                    sender=user,
-                    receiver=course.instructor,
-                    tx_type='CONTENT_SALE',
-                    amount_tc=Decimal(str(price_int)),
-                    amount_vnd=Decimal(str(creator_share_vnd)),
-                    tc_added=Decimal('0.00'),
-                    status='PENDING',
-                )
-            buyer_profile.refresh_from_db(fields=['balance_tc', 'wallet_balance'])
-            next_balance = _profile_balance_tc_int(buyer_profile)
-    except Wallet.DoesNotExist:
-        return _json_error('Wallet not found.', status=404)
-    except Exception as exc:
-        return _json_error(str(exc), status=500)
-
-    return _json_success({'message': 'Mua khóa học thành công!', 'remaining_tc': next_balance})
 
 @csrf_exempt
 @require_POST
@@ -2206,9 +2232,8 @@ def api_create_course_with_video(request):
     Expects a multipart/form-data POST with fields:
     - title
     - description
-    - price_tc (alias bundle_price_tc)
     - category (id)
-    - video (file) or video_url (Google Drive link / iframe)
+    - videos_json / videos payload containing per-video duration + pricing data
     - thumbnail (optional image file)
 
     The newly created course is owned by request.user and a Video linked to
@@ -2232,39 +2257,40 @@ def api_create_course_with_video(request):
 
     title = (data.get('title') or '').strip()
     description = (data.get('description') or '').strip()
-    category_id = data.get('category')
-    price_raw = data.get('bundle_price_tc') or data.get('price_tc')
-    video_url_raw = (data.get('video_url') or '').strip()
-    duration_raw = data.get('duration_seconds')
-    video_file = files.get('video') or files.get('video_file')
-    thumbnail_file = files.get('thumbnail')
+    category_text = (data.get('category_text') or data.get('category') or '').strip()
+    videos_json_raw = data.get('videos_json')
+    videos_payload_direct = data.get('videos') if is_json else None
 
-    video_url = _extract_drive_src(video_url_raw)
-
-    if not title or not description or price_raw is None or duration_raw is None or (not video_file and not video_url):
+    if not title or not description:
         return _json_error('Thiếu dữ liệu cần thiết!', status=400)
 
-    try:
-        bundle_price_tc = Decimal(str(price_raw))
-    except Exception:
-        return _json_error('Giá TC không hợp lệ!', status=400)
-
-    try:
-        duration_seconds = int(duration_raw)
-        if duration_seconds <= 0:
-            raise ValueError('Thời lượng phải lớn hơn 0 giây.')
-    except Exception:
-        return _json_error('duration_seconds không hợp lệ!', status=400)
+    videos_payload = []
+    if videos_payload_direct is not None:
+        if not isinstance(videos_payload_direct, list) or not videos_payload_direct:
+            return _json_error('Danh sách video không hợp lệ!', status=400)
+        videos_payload = videos_payload_direct
+    elif videos_json_raw:
+        try:
+            parsed = json.loads(videos_json_raw)
+        except Exception:
+            return _json_error('videos_json không hợp lệ!', status=400)
+        if not isinstance(parsed, list) or not parsed:
+            return _json_error('Danh sách video không hợp lệ!', status=400)
+        videos_payload = parsed
+    else:
+        return _json_error('Thiếu danh sách video theo định dạng mới.', status=400)
 
     form = CourseForm({
         'title': title,
         'description': description,
-        'category': category_id,
-        'bundle_price_tc': bundle_price_tc,
+        'category_text': category_text,
     })
 
     if not form.is_valid():
         return _json_error(form.errors.as_json(), status=400)
+
+    creator_avg_rating = round(_creator_avg_rating(user), 2)
+    creator_can_override = creator_avg_rating > 4.5
 
     try:
         with transaction.atomic():
@@ -2272,32 +2298,97 @@ def api_create_course_with_video(request):
             course.instructor = user
             course.save()
 
-            video = Video(
-                title=title,
-                description=description,
-                creator=user,
-                course=course,
-                category=course.category,
-                duration_seconds=duration_seconds,
-            )
+            created = []
+            temp_to_video = {}
 
-            if video_file:
-                stored_name = default_storage.save(f"videos/{video_file.name}", video_file)
-                video.file_url = stored_name
-                video.video_file = stored_name
-            else:
-                video.file_url = video_url
+            for index, item in enumerate(videos_payload):
+                v_title = (item.get('title') or title).strip()
+                v_description = (item.get('description') or description).strip()
+                v_temp_id = (item.get('temp_id') or f'video_{index + 1}').strip()
+                v_prereq_temp = item.get('prerequisite_temp_id')
+                v_url = _extract_drive_src((item.get('video_url') or '').strip())
 
-            if thumbnail_file:
-                thumb_name = default_storage.save(f"thumbnails/{thumbnail_file.name}", thumbnail_file)
-                video.thumbnail = thumb_name
+                try:
+                    v_duration = int(item.get('duration_seconds'))
+                    if v_duration <= 0:
+                        raise ValueError()
+                except Exception:
+                    return _json_error(f'duration_seconds không hợp lệ ở video #{index + 1}!', status=400)
 
-            video.save()
+                computed_tc = max(1, (v_duration + 59) // 60)
+                override_tc = item.get('manual_price_tc')
+                base_price_tc = computed_tc
+
+                if override_tc not in (None, '', 'null'):
+                    if not creator_can_override:
+                        return _json_error('Bạn chưa đủ điều kiện tự đặt giá video.', status=400)
+                    try:
+                        override_value = int(override_tc)
+                    except Exception:
+                        return _json_error('Giá tùy chỉnh không hợp lệ.', status=400)
+                    if override_value < 1 or override_value > 5:
+                        return _json_error('Giá tối đa cho phép là 5 TC', status=400)
+                    base_price_tc = override_value
+
+                v_file = files.get(f'video_file_{index}') or files.get(f'video_{index}')
+                v_thumb = files.get(f'thumbnail_{index}')
+
+                if not v_file and not v_url:
+                    return _json_error(f'Thiếu nguồn video ở mục #{index + 1}!', status=400)
+
+                video = Video(
+                    title=v_title,
+                    description=v_description,
+                    creator=user,
+                    course=course,
+                    category=course.category,
+                    duration_seconds=v_duration,
+                    base_price=Decimal(str(base_price_tc)),
+                )
+
+                if v_file:
+                    stored_name = default_storage.save(f"videos/{v_file.name}", v_file)
+                    video.file_url = stored_name
+                    video.video_file = stored_name
+                else:
+                    video.file_url = v_url
+
+                if v_thumb:
+                    thumb_name = default_storage.save(f"thumbnails/{v_thumb.name}", v_thumb)
+                    video.thumbnail = thumb_name
+
+                video.save()
+                temp_to_video[v_temp_id] = video
+                created.append((video, v_prereq_temp))
+
+            for video, v_prereq_temp in created:
+                if not v_prereq_temp:
+                    continue
+                prereq_video = temp_to_video.get(str(v_prereq_temp))
+                if prereq_video and prereq_video.id != video.id:
+                    video.prerequisite_video = prereq_video
+                    video.save(update_fields=['prerequisite_video'])
+
+            created_payload = [
+                {
+                    'id': video.id,
+                    'title': video.title,
+                    'duration_seconds': int(video.duration_seconds or 0),
+                    'price_tc': _tc_to_int(video.base_price),
+                    'prerequisite_id': video.prerequisite_video_id,
+                }
+                for video, _ in created
+            ]
     except Exception as exc:
         return _json_error(str(exc), status=500)
 
     return _json_success({
         'course_id': course.id,
+        'creator_id': user.id,
+        'channel_id': user.id,
+        'videos': created_payload,
+        'creator_eligible_price_override': creator_can_override,
+        'creator_avg_rating': creator_avg_rating,
         'message': 'Tạo khóa học thành công'
     }, status=201)
 
@@ -2325,7 +2416,7 @@ def api_channel_detail(request):
     # gather courses for owner
     courses = list(
         Course.objects.filter(instructor=owner, is_active=True).values(
-            'id', 'title', 'bundle_price_tc'
+            'id', 'title'
         )
     )
     followers_count = Follow.objects.filter(following=owner).count()

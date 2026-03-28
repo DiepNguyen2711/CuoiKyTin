@@ -1,27 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('./variables.css');
 
 /* =============== 1. VARIABLES =============== */
 :root {
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-blue-300: #93c5fd;
-  --color-blue-400: #60a5fa;
-  --color-blue-500: #3b82f6;
-  --color-blue-600: #2563eb;
-  --color-green-500: #10b981;
-  --color-green-600: #059669;
+  --app-header-height: 70px;
 
   /* Auth defaults (light) */
-  --auth-bg-container: linear-gradient(135deg, #3b82f6, #2563eb);
+  --auth-bg-container: linear-gradient(135deg, var(--main-blue-500), var(--main-blue));
   --auth-bg-card: #ffffff;
-  --auth-text-title: #1f2937;
-  --auth-text-label: #374151;
+  --auth-text-title: var(--gray-800);
+  --auth-text-label: var(--gray-700);
   --auth-input-bg: #f9fafb;
-  --auth-input-border: #d1d5db;
-  --auth-input-text: #1f2937;
+  --auth-input-border: var(--gray-300);
+  --auth-input-text: var(--gray-800);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,11 +37,16 @@
 body {
   font-family: 'Inter', sans-serif;
   background-color: #f9fafb;
-  color: #1f2937;
+  color: var(--gray-800);
   line-height: 1.6;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
 }
 
 /* Profile page top-gap and header/title fixes */
@@ -60,7 +56,21 @@ body.profile-page {
 }
 
 .app-header {
-  height: 70px;
+  height: var(--app-header-height);
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#appHeaderMount,
+#header-placeholder {
+  height: var(--app-header-height) !important;
+  min-height: var(--app-header-height);
 }
 
 .app-header-inner {
@@ -110,7 +120,7 @@ body.profile-page {
 
 .header-search-input:focus {
   outline: none;
-  border-color: #60a5fa;
+  border-color: var(--color-blue-400);
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.22);
   background: rgba(15, 23, 42, 0.5);
 }
@@ -161,6 +171,57 @@ body.profile-page {
   min-height: 40px;
 }
 
+.header-user-menu-wrap {
+  position: relative;
+}
+
+.header-user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 190px;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+  z-index: 10050;
+  overflow: hidden;
+}
+
+.header-user-dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: var(--font-sm);
+  color: #111827;
+  background: #ffffff;
+  text-decoration: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.header-user-dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.dark .header-user-dropdown {
+  background: #1f2937;
+  color: #f9fafb;
+  border-color: #374151;
+}
+
+.dark .header-user-dropdown-item {
+  background: #1f2937;
+  color: #f9fafb;
+}
+
+.dark .header-user-dropdown-item:hover {
+  background: #374151;
+}
+
 .tc-balance {
   background: linear-gradient(135deg, #ffd700, #ff8c00);
   color: white;
@@ -195,7 +256,7 @@ body.profile-page {
   border: 1px solid #dbe2ea;
   background: #f8fafc;
   color: #0f172a;
-  font-size: 0.95rem;
+  font-size: var(--font-base);
   line-height: 1.2;
   padding: 0 56px 0 20px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
@@ -277,6 +338,27 @@ body.profile-page {
   pointer-events: none;
 }
 
+.courses-section-spacing {
+  margin-top: 24px;
+}
+
+.course-owned-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.dark .course-owned-badge {
+  background: rgba(22, 163, 74, 0.25);
+  color: #86efac;
+}
+
 @media (max-width: 920px) {
   .header-search {
     width: 200px;
@@ -316,7 +398,7 @@ body.profile-page .profile-settings-title {
 
 .header-page-title {
   color: #ffffff !important;
-  font-size: 1.2rem;
+  font-size: var(--font-lg);
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 1px;
@@ -334,7 +416,7 @@ body.profile-page .profile-settings-title {
   background: rgba(245, 158, 11, 0.2);
   border: 1px solid rgba(245, 158, 11, 0.55);
   color: #facc15;
-  font-size: 0.95rem;
+  font-size: var(--font-base);
 }
 
 /* Notification purchase visual treatment */
@@ -491,7 +573,7 @@ main {
   padding: 40px;
   width: 100%;
   max-width: 420px;
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   box-shadow: 0 20px 40px rgba(0,0,0,0.15);
   animation: fadeInUp 0.5s ease-out;
   transition: background 0.3s ease;
@@ -507,7 +589,7 @@ main {
 .auth-card h2 {
   text-align: center;
   margin-bottom: 24px;
-  font-size: 26px;
+  font-size: calc(var(--font-xl) - 0.075rem);
   font-weight: 700;
   color: var(--auth-text-title);
 }
@@ -521,7 +603,7 @@ main {
   border: 1px solid var(--auth-input-border);
   background: var(--auth-input-bg);
   color: var(--auth-input-text);
-  font-size: 14px;
+  font-size: var(--font-sm);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .auth-input-group input:focus,
@@ -540,16 +622,16 @@ main {
 .eye-btn:hover { color: var(--color-blue-500); }
 
 .auth-button {
-  width: 100%; padding: 12px; border-radius: 10px; font-size: 15px;
+  width: 100%; padding: 12px; border-radius: var(--radius-md); font-size: var(--font-base);
   font-weight: 600; background: var(--color-blue-500); color: white; border: none;
   cursor: pointer; transition: background-color 0.2s, transform 0.2s;
 }
 .auth-button:hover { background: var(--color-blue-600); transform: translateY(-2px); }
 
-.auth-footer { text-align: center; margin-top: 18px; font-size: 14px; color: var(--color-gray-400); }
+.auth-footer { text-align: center; margin-top: 18px; font-size: var(--font-sm); color: var(--color-gray-400); }
 .auth-footer a { color: var(--color-blue-500); font-weight: 600; }
 .auth-footer a:hover { text-decoration: underline; }
-.auth-error { color: red; font-size: 13px; margin-bottom: 12px; text-align: center; }
+.auth-error { color: red; font-size: var(--font-xs); margin-bottom: 12px; text-align: center; }
 
 /* =============== 5. ANIMATIONS =============== */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

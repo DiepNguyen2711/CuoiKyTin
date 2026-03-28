@@ -8,17 +8,23 @@
     <script>
         tailwind.config = { darkMode: 'class' };
     </script>
-    <link rel="stylesheet" href="tailwind.css">
-    <script src="js/header-component.js"></script>
-    <script src="js/header-notifications.js"></script>
-    <script src="js/user-state.js"></script>
-    <script src="js/live-filter.js"></script>
+    <link rel="stylesheet" href="assets/tailwind.css">
+    <script src="components/header-component.js"></script>
+    <script src="components/sidebar-component.js"></script>
+    <script src="components/navigation-injector.js"></script>
+    <script src="api/header-notifications.js"></script>
+    <script src="api/user-state.js"></script>
+    <script src="api/live-filter.js"></script>
 </head>
 <body class="profile-page bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
-    <div id="appHeaderMount"></div>
+    <div id="header-placeholder"></div>
     <script>
-        if (window.HourskillHeader?.mount) {
-            window.HourskillHeader.mount({ pageTitle: 'CÀI ĐẶT' });
+        if (window.HourskillNavigation?.inject) {
+            window.HourskillNavigation.inject({
+                headerTargetId: 'header-placeholder',
+                pageTitle: 'CÀI ĐẶT',
+                hideSidebar: true,
+            });
         }
     </script>
 
@@ -226,9 +232,6 @@
             window.location.href = 'login.html';
         }
 
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
         const htmlRoot = document.getElementById('html-root');
         const bodyRoot = document.body;
 
@@ -254,14 +257,10 @@
             if (enabled) {
                 htmlRoot.classList.add('dark');
                 bodyRoot.classList.add('dark');
-                if (themeToggleLightIcon) themeToggleLightIcon.classList.remove('hidden');
-                if (themeToggleDarkIcon) themeToggleDarkIcon.classList.add('hidden');
                 localStorage.setItem('color-theme', 'dark');
             } else {
                 htmlRoot.classList.remove('dark');
                 bodyRoot.classList.remove('dark');
-                if (themeToggleDarkIcon) themeToggleDarkIcon.classList.remove('hidden');
-                if (themeToggleLightIcon) themeToggleLightIcon.classList.add('hidden');
                 localStorage.setItem('color-theme', 'light');
             }
             const prefDark = document.getElementById('prefDarkMode');
@@ -822,9 +821,6 @@
             }
         });
 
-        if (themeToggleBtn) {
-            themeToggleBtn.addEventListener('click', () => setDarkMode(!htmlRoot.classList.contains('dark')));
-        }
         document.getElementById('prefDarkMode').addEventListener('change', async (event) => {
             const enabled = Boolean(event.target.checked);
             setDarkMode(enabled);
@@ -864,18 +860,7 @@
             await syncUserData();
         });
 
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user_id');
-                localStorage.removeItem('username');
-                localStorage.removeItem('email');
-                localStorage.removeItem('wallet_balance');
-                localStorage.removeItem('is_vip');
-                window.location.href = 'login.html';
-            });
-        }
+        // Header dropdown handles logout globally.
     </script>
 </body>
 </html>

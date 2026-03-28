@@ -6,6 +6,11 @@
 venv/
 env/
 
+# Environment secrets
+.env
+.env.local
+.env.*.local
+
 # Database cục bộ
 *.sqlite3
 
