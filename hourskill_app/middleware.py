@@ -4,6 +4,9 @@ from django.contrib.auth import logout
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.core.cache import cache
+from django.utils import timezone
+
+from .models import UserProfile
 
 
 class SingleSessionMiddleware(MiddlewareMixin):
@@ -46,4 +49,35 @@ class SingleSessionMiddleware(MiddlewareMixin):
 
         # Refresh TTL to keep the mapping alive while active
         cache.set(cache_key, session_key, timeout=self.ttl_seconds)
+        return None
+
+
+class VipAccessMiddleware(MiddlewareMixin):
+    """Attach VIP access state to request and expire outdated subscriptions."""
+
+    def process_request(self, request):
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            request.vip_active = False
+            return None
+
+        try:
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            expiry = profile.vip_expiry or user.vip_expiry
+            flagged = bool(profile.is_vip or user.is_vip)
+            active = bool(flagged and expiry and expiry > timezone.now())
+
+            if flagged and expiry and expiry <= timezone.now():
+                profile.is_vip = False
+                profile.vip_expiry = None
+                profile.save(update_fields=['is_vip', 'vip_expiry'])
+                user.is_vip = False
+                user.vip_expiry = None
+                user.save(update_fields=['is_vip', 'vip_expiry'])
+                active = False
+
+            request.vip_active = active
+        except Exception:
+            request.vip_active = False
+
         return None

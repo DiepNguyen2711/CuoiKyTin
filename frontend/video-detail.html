@@ -14,6 +14,11 @@
 <body class="bg-gray-100">
 
 <div class="max-w-7xl mx-auto px-6 py-10">
+	<div class="flex items-center justify-end mb-4">
+		<div class="bg-white px-4 py-2 rounded-lg shadow text-sm font-semibold text-gray-700">
+			TC hiện tại: <span id="tcBalanceHeader">...</span>
+		</div>
+	</div>
 
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
@@ -22,6 +27,19 @@
 
 			<!-- VIDEO PLAYER -->
 			<div class="bg-black rounded-xl overflow-hidden shadow-lg">
+				<div id="lockedPlaceholder" class="hidden w-full h-[480px] flex items-center justify-center text-gray-300 bg-black">
+					<div class="text-center">
+						<p class="text-2xl mb-2">🔒</p>
+						<p class="mb-4">Video đang bị khóa. Vui lòng mở khóa để xem.</p>
+						<button
+							id="lockedPlaceholderUnlockBtn"
+							onclick="buyCurrentVideo()"
+							class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold"
+						>
+							Mở khóa ngay để xem
+						</button>
+					</div>
+				</div>
 				<video id="videoPlayer" controls class="w-full h-[480px] object-contain"></video>
 				<iframe
 					id="videoIframe"
@@ -42,9 +60,10 @@
 						<div>
 							<p id="creatorName" class="font-semibold text-lg"></p>
 							<p class="text-sm text-gray-500">Creator</p>
+							<p id="creatorBadge" class="hidden text-xs text-emerald-600 font-semibold mt-1">Bạn là người sáng tạo - Xem miễn phí</p>
 						</div>
 					</div>
-					<button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-full text-sm">🔔 Theo dõi</button>
+					<button id="followBtn" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-full text-sm">🔔 Theo dõi</button>
 				</div>
 			</div>
 
@@ -61,7 +80,7 @@
 						<option value="2">2⭐</option>
 						<option value="1">1⭐</option>
 					</select>
-					<button onclick="postComment(videoId)" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Gửi bình luận</button>
+					<button id="commentSubmitBtn" onclick="postComment(currentVideoId)" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>Gửi bình luận</button>
 				</div>
 				<div id="commentList" class="space-y-4"></div>
 			</div>
@@ -72,11 +91,11 @@
 		<div class="space-y-4">
 			<div class="bg-white p-6 rounded-xl shadow" id="purchaseBox">
 				<h2 class="text-xl font-semibold mb-4">Khóa học</h2>
-				<p class="text-gray-600 mb-6">Mua video để mở khóa toàn bộ nội dung</p>
-				<button onclick="buyVideo()" class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold" id="purchaseBtn">💰 Mua video</button>
+				<p class="text-gray-600 mb-6">Mỗi bài học được mở khóa riêng theo thời lượng video</p>
+				<button onclick="buyCurrentVideo()" class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold" id="purchaseBtn">💰 Mở khóa video hiện tại</button>
 			</div>
 
-			<div class="bg-white p-6 rounded-xl shadow hidden" id="sidebarList">
+			<div class="bg-white p-6 rounded-xl shadow" id="sidebarList">
 				<h2 class="text-xl font-semibold mb-4">Nội dung khoá học</h2>
 				<ul id="sidebarItems" class="space-y-3 text-sm text-gray-800"></ul>
 			</div>
@@ -112,7 +131,7 @@ class="text-sm text-gray-500 mb-4"
 
 <button
 id="unlockBtn"
-onclick="buyVideo()"
+onclick="buyCurrentVideo()"
 class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg"
 >
 Mở khóa
@@ -133,25 +152,76 @@ if (!token) {
 
 let requiredTC = 0; // Price of the current video/course (numeric)
 let currentBalance = 0; // User wallet balance (numeric)
+let currentVideoId = null;
+let currentCourseId = null;
+let lessons = [];
+let currentCreatorId = null;
+let isFollowingCreator = false;
+let isVipUser = false;
 
 
 const params = new URLSearchParams(window.location.search);
 const videoId =
 	params.get("id") || params.get("video_id") || params.get("course_id");
 const courseIdParam = params.get("course_id") || null;
+currentVideoId = videoId;
+currentCourseId = courseIdParam;
 
 if (!videoId) {
 	alert("Thiếu id video trong URL");
 }
 
+function updateFollowButtonUI(){
+	const followBtn = document.getElementById("followBtn");
+	if(!followBtn) return;
+	if(isFollowingCreator){
+		followBtn.innerText = "✓ Đã theo dõi";
+		followBtn.className = "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-4 py-2 rounded-full text-sm font-semibold";
+	} else {
+		followBtn.innerText = "🔔 Theo dõi";
+		followBtn.className = "bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-full text-sm";
+	}
+}
+
+async function toggleFollowCreator(){
+	if(!currentCreatorId){
+		alert("Không xác định được Creator");
+		return;
+	}
+
+	try{
+		const res = await fetch("http://127.0.0.1:8000/api/follow/", {
+			method:"POST",
+			headers:{
+				"Content-Type":"application/json",
+				Authorization:`Bearer ${token}`
+			},
+			body: JSON.stringify({ creator_id: currentCreatorId })
+		});
+
+		const data = await res.json();
+		if(!res.ok){
+			alert(data.message || "Không thể follow creator");
+			return;
+		}
+
+		isFollowingCreator = Boolean(data.is_following);
+		updateFollowButtonUI();
+	}catch(err){
+		console.error("[toggleFollowCreator] failed", err);
+		alert("Lỗi server khi follow/unfollow");
+	}
+}
+
 async function fetchWalletBalance(){
 	try{
-		const res = await fetch("http://127.0.0.1:8000/api/wallet/", {
+		const res = await fetch("http://127.0.0.1:8000/api/user-profile/", {
 			headers: { Authorization: `Bearer ${token}` }
 		});
 		const data = await res.json();
 		if(res.ok){
-			currentBalance = Number(data.balance || 0);
+			currentBalance = Number(data.balance ?? data.wallet_balance ?? 0);
+			updateBalanceDisplay(currentBalance);
 			console.log("[wallet] balance", currentBalance);
 		}else{
 			console.warn("[wallet] failed", data);
@@ -159,6 +229,68 @@ async function fetchWalletBalance(){
 	}catch(err){
 		console.warn("[wallet] error", err);
 	}
+}
+
+async function syncUserData(){
+	await fetchWalletBalance();
+}
+
+window.syncUserData = syncUserData;
+
+function updateBalanceDisplay(newAmount, options = {}){
+	const { emitEvent = true } = options;
+	if(newAmount == null) return;
+	const safe = Number.isFinite(Number(newAmount)) ? Math.max(0, Math.floor(Number(newAmount))) : 0;
+	const formatted = safe.toLocaleString('vi-VN');
+
+	const targets = [
+		document.getElementById("tcBalanceHeader"),
+		document.getElementById("user-wallet-balance"),
+		document.getElementById("tc-balance"),
+		document.getElementById("walletBalance"),
+	];
+
+	targets.forEach((node) => {
+		if(node){
+			node.innerText = formatted;
+		}
+	});
+
+	currentBalance = safe;
+	localStorage.setItem("wallet_balance", String(safe));
+	if(emitEvent){
+		window.dispatchEvent(new CustomEvent("hourskill:balance-updated", {
+			detail: { balance: safe }
+		}));
+	}
+}
+
+window.updateBalanceDisplay = updateBalanceDisplay;
+
+window.addEventListener("hourskill:balance-updated", (event) => {
+	const next = event?.detail?.balance;
+	if(next != null){
+		updateBalanceDisplay(next, { emitEvent: false });
+	}
+});
+
+window.addEventListener("storage", (event) => {
+	if(event.key === "wallet_balance" && event.newValue != null){
+		updateBalanceDisplay(event.newValue, { emitEvent: false });
+	}
+});
+
+function formatDuration(totalSeconds){
+	const seconds = Math.max(0, Number(totalSeconds || 0));
+	const mins = Math.floor(seconds / 60);
+	const secs = seconds % 60;
+	return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+function computeTcFromDuration(totalSeconds){
+	const seconds = Math.max(0, Number(totalSeconds || 0));
+	// Business rule: >= 30 seconds rounds up to next minute
+	return Math.max(0, Math.floor((seconds + 30) / 60));
 }
 
 function toDrivePreview(url){
@@ -177,6 +309,10 @@ function toDrivePreview(url){
 function setPlayerSource(rawUrl){
 	const video = document.getElementById("videoPlayer");
 	const iframe = document.getElementById("videoIframe");
+	const lockedPlaceholder = document.getElementById("lockedPlaceholder");
+	if(lockedPlaceholder){
+		lockedPlaceholder.classList.add("hidden");
+	}
 
 	const isDrive = rawUrl && rawUrl.includes('drive.google.com');
 	if(isDrive){
@@ -195,12 +331,154 @@ function setPlayerSource(rawUrl){
 	}
 }
 
+function showLockedPlaceholder(){
+	const video = document.getElementById("videoPlayer");
+	const iframe = document.getElementById("videoIframe");
+	const lockedPlaceholder = document.getElementById("lockedPlaceholder");
+
+	if(video) video.classList.add("hidden");
+	if(iframe) iframe.classList.add("hidden");
+	if(lockedPlaceholder) lockedPlaceholder.classList.remove("hidden");
+}
+
+function clearPlayer(){
+	const video = document.getElementById("videoPlayer");
+	const iframe = document.getElementById("videoIframe");
+	if(video){
+		video.pause();
+		video.removeAttribute("src");
+		video.load();
+	}
+	if(iframe){
+		iframe.src = "";
+	}
+}
+
+function getComputedPriceForVideo(videoIdToCheck){
+	const lesson = lessons.find(item => String(item.id) === String(videoIdToCheck));
+	if(lesson){
+		return Number(lesson.price_tc ?? computeTcFromDuration(lesson.duration_seconds));
+	}
+	return Math.max(0, Number(requiredTC || 0));
+}
+
+function syncCurrentVideoPriceUI(isLocked){
+	if(isVipUser){
+		const purchaseBtn = document.getElementById("purchaseBtn");
+		if(purchaseBtn){
+			purchaseBtn.classList.add("hidden");
+		}
+		const lockedPlaceholderUnlockBtn = document.getElementById("lockedPlaceholderUnlockBtn");
+		if(lockedPlaceholderUnlockBtn){
+			lockedPlaceholderUnlockBtn.classList.add("hidden");
+		}
+		const unlockTextNode = document.getElementById("unlockText");
+		if(unlockTextNode){
+			unlockTextNode.innerText = "Tai khoan VIP - Xem ngay khong can mo khoa";
+		}
+		return;
+	}
+
+	const price = getComputedPriceForVideo(currentVideoId);
+	requiredTC = price;
+
+	const purchaseBtn = document.getElementById("purchaseBtn");
+	if(purchaseBtn){
+		purchaseBtn.innerText = `💰 Unlock for ${price} TC`;
+	}
+
+	const lockedPlaceholderUnlockBtn = document.getElementById("lockedPlaceholderUnlockBtn");
+	if(lockedPlaceholderUnlockBtn){
+		lockedPlaceholderUnlockBtn.innerText = `Mở khóa ngay để xem - ${price} TC`;
+	}
+
+	if(isLocked){
+		document.getElementById("unlockText").innerText = `Bạn cần ${price} TC để mở khóa`;
+		document.getElementById("balanceText").innerText = `Số dư: ${Math.floor(Number(currentBalance || 0)).toLocaleString('vi-VN')} TC`;
+	}
+}
+
+async function inferCourseIdIfMissing(){
+	if(currentCourseId || !currentVideoId) return;
+	try{
+		const res = await fetch(`http://127.0.0.1:8000/api/manage/videos/${currentVideoId}/`, {
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		const data = await res.json();
+		if(res.ok && data.course){
+			currentCourseId = String(data.course);
+		}
+	}catch(err){
+		console.warn("[inferCourseIdIfMissing] failed", err);
+	}
+}
+
+function renderLessonList(){
+	const sidebar = document.getElementById("sidebarItems");
+	if(!sidebar) return;
+	sidebar.innerHTML = "";
+
+	if(!Array.isArray(lessons) || !lessons.length){
+		sidebar.innerHTML = '<li class="text-gray-500">Chưa có video khác.</li>';
+		return;
+	}
+
+	lessons.forEach(lesson => {
+		const li = document.createElement("li");
+		const computedPrice = Number(lesson.price_tc ?? computeTcFromDuration(lesson.duration_seconds));
+		const isUnlocked = Boolean(lesson.is_unlocked || isVipUser || lesson.is_free);
+		const isActive = String(lesson.id) === String(currentVideoId);
+
+		li.className = `border rounded-lg p-3 ${isActive ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"}`;
+
+		if(isUnlocked){
+			li.innerHTML = `
+				<div class="flex items-start justify-between gap-3">
+					<div>
+						<p class="font-semibold text-gray-900">${lesson.title}</p>
+						<p class="text-xs text-gray-500 mt-1">${formatDuration(lesson.duration_seconds)} • ▶ ${isVipUser ? 'VIP Access' : 'Unlocked'}</p>
+					</div>
+					<button data-play-id="${lesson.id}" class="shrink-0 bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-md">▶ Play</button>
+				</div>
+			`;
+		} else {
+			li.innerHTML = `
+				<div class="flex items-start justify-between gap-3">
+					<div>
+						<p class="font-semibold text-gray-900">${lesson.title}</p>
+						<p class="text-xs text-gray-500 mt-1">${formatDuration(lesson.duration_seconds)} • 🔒 Locked</p>
+					</div>
+					<button data-unlock-id="${lesson.id}" class="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3 py-2 rounded-md">Unlock for ${computedPrice} TC</button>
+				</div>
+			`;
+		}
+
+		sidebar.appendChild(li);
+	});
+
+	sidebar.querySelectorAll("button[data-play-id]").forEach(btn => {
+		btn.addEventListener("click", async (event) => {
+			const id = event.currentTarget.getAttribute("data-play-id");
+			await loadVideoById(id);
+			renderLessonList();
+		});
+	});
+
+	sidebar.querySelectorAll("button[data-unlock-id]").forEach(btn => {
+		btn.addEventListener("click", async (event) => {
+			const id = event.currentTarget.getAttribute("data-unlock-id");
+			await unlockLesson(id);
+		});
+	});
+}
+
 async function loadCourseItems(){
 	const sidebar = document.getElementById("sidebarItems");
 	if(!sidebar) return;
 
-	// If course_id is known from URL, use it; otherwise try to infer from API later (not available here)
-	const courseId = courseIdParam;
+	await inferCourseIdIfMissing();
+
+	const courseId = currentCourseId;
 	if(!courseId){
 		console.log("[loadCourseItems] No course_id provided");
 		sidebar.innerHTML = '<li class="text-gray-500">Không có danh sách khoá học.</li>';
@@ -208,19 +486,22 @@ async function loadCourseItems(){
 	}
 
 	try{
-		const res = await fetch(`http://127.0.0.1:8000/api/manage/videos/?course=${courseId}`, {
+		const res = await fetch(`http://127.0.0.1:8000/api/manage/courses/${courseId}/`, {
 			headers: { Authorization: `Bearer ${token}` }
 		});
 		const data = await res.json();
 		console.log("[loadCourseItems] status", res.status, "payload", data);
-		sidebar.innerHTML = "";
-		if(res.ok && Array.isArray(data.videos) && data.videos.length){
-			data.videos.forEach(v => {
-				const li = document.createElement("li");
-				li.className = "flex justify-between items-center";
-				li.innerHTML = `<span>${v.title}</span><span class="text-xs text-gray-500">${v.duration_seconds || 0}s</span>`;
-				sidebar.appendChild(li);
-			});
+		if(res.ok && Array.isArray(data.videos)){
+			lessons = data.videos.map(v => ({
+				id: v.id,
+				title: v.title,
+				duration_seconds: Number(v.duration_seconds ?? v.duration ?? 0),
+				price_tc: Number(v.price_tc ?? computeTcFromDuration(v.duration_seconds ?? v.duration ?? 0)),
+				is_free: Boolean(v.is_free),
+				is_unlocked: Boolean(v.is_unlocked),
+			}));
+			renderLessonList();
+			syncCurrentVideoPriceUI(Boolean(lessons.find(item => String(item.id) === String(currentVideoId) && !item.is_unlocked)));
 		} else {
 			sidebar.innerHTML = '<li class="text-gray-500">Chưa có video khác.</li>';
 		}
@@ -231,12 +512,14 @@ async function loadCourseItems(){
 }
 
 
-async function loadVideo(){
+async function loadVideoById(targetVideoId, options = {}){
+	const { silent = false } = options;
+	currentVideoId = targetVideoId;
 
 try{
 
 const res = await fetch(
-	`http://127.0.0.1:8000/api/video/${videoId}/`,
+	`http://127.0.0.1:8000/api/video/${targetVideoId}/`,
 	{
 		headers:{
 			Authorization:`Bearer ${token}`
@@ -248,18 +531,39 @@ const data = await res.json();
 console.log("[loadVideo] status", res.status, "payload", data);
 
 if(!res.ok){
-  alert(data.message || "Không tải được video");
-  return;
+	if(!silent){
+		alert(data.message || "Không tải được video");
+	}
+	return false;
 }
 
-requiredTC = Number(data.requiredTC || 0);
+requiredTC = Number(data.price_tc ?? data.requiredTC ?? 0);
+isVipUser = Boolean(data.is_vip);
 
 document.getElementById("videoTitle").innerText = data.title || "";
 document.getElementById("creatorName").innerText = data.creator?.name || "Unknown Creator";
 document.getElementById("creatorAvatar").src = data.creator?.avatar || "https://i.pravatar.cc/100";
+currentCreatorId = data.creator?.id || null;
+isFollowingCreator = Boolean(data.following);
+updateFollowButtonUI();
+
+const creatorBadge = document.getElementById("creatorBadge");
+if(creatorBadge){
+	if(data.is_owner){
+		creatorBadge.classList.remove("hidden");
+	} else {
+		creatorBadge.classList.add("hidden");
+	}
+}
+
+if(currentCourseId == null){
+	await inferCourseIdIfMissing();
+}
 
 if(data.is_owner){
 	console.log("[loadVideo] Owner access granted.");
+	const followBtn = document.getElementById("followBtn");
+	if(followBtn) followBtn.classList.add("hidden");
 	document.getElementById("unlockPopup").classList.add("hidden");
 	const purchaseBtn = document.getElementById("purchaseBtn");
 	if(purchaseBtn) purchaseBtn.classList.add("hidden");
@@ -271,83 +575,157 @@ if(data.is_owner){
   if(sidebar) sidebar.classList.remove("hidden");
   await loadCourseItems();
 } else if(data.locked){
+	const followBtn = document.getElementById("followBtn");
+	if(followBtn) followBtn.classList.remove("hidden");
+	clearPlayer();
+	showLockedPlaceholder();
 	document.getElementById("unlockPopup").classList.remove("hidden");
-	document.getElementById("unlockText").innerText = `Bạn cần ${data.requiredTC} TC để mở khóa`;
+	const purchaseBox = document.getElementById("purchaseBox");
+	if(purchaseBox) purchaseBox.classList.remove("hidden");
+	const purchaseBtn = document.getElementById("purchaseBtn");
+	if(purchaseBtn) purchaseBtn.classList.remove("hidden");
+	const sidebar = document.getElementById("sidebarList");
+	if(sidebar) sidebar.classList.remove("hidden");
 	const knownBalance = Number(currentBalance || data.userTC || 0);
-	document.getElementById("balanceText").innerText = `Số dư: ${knownBalance} TC`;
+	updateBalanceDisplay(knownBalance);
+	syncCurrentVideoPriceUI(true);
 	document.getElementById("videoPlayer").poster = "";
 } else {
+	const followBtn = document.getElementById("followBtn");
+	if(followBtn) followBtn.classList.remove("hidden");
+	document.getElementById("unlockPopup").classList.add("hidden");
+	const purchaseBox = document.getElementById("purchaseBox");
+	if(purchaseBox) purchaseBox.classList.add("hidden");
+	const lockedPlaceholderUnlockBtn = document.getElementById("lockedPlaceholderUnlockBtn");
+	if(lockedPlaceholderUnlockBtn && isVipUser){
+		lockedPlaceholderUnlockBtn.classList.add("hidden");
+	}
+	const sidebar = document.getElementById("sidebarList");
+	if(sidebar) sidebar.classList.remove("hidden");
 	setPlayerSource(data.videoUrl);
 }
 
-loadComments(videoId);
+loadComments(targetVideoId);
+
+	if(Array.isArray(lessons) && lessons.length){
+		lessons = lessons.map(item => (
+			String(item.id) === String(targetVideoId)
+				? { ...item, is_unlocked: !data.locked }
+				: item
+		));
+		renderLessonList();
+	}
+
+	syncCurrentVideoPriceUI(Boolean(data.locked));
+	return true;
 
 }catch(e){
 	console.error("[loadVideo] error", e);
-	alert("Không tải được video");
+	return false;
 }
 
+}
+
+
+
+async function unlockLesson(lessonId){
+	const price = getComputedPriceForVideo(lessonId);
+
+	const confirmed = window.confirm(`You will spend ${price} TC to unlock this lesson. Proceed?`);
+	if(!confirmed) return;
+
+	if(price > 0 && Number(currentBalance || 0) < price){
+		alert("Bạn không đủ tiền");
+		return;
+	}
+
+	try{
+		const res = await fetch("http://127.0.0.1:8000/api/unlock-video/", {
+			method:"POST",
+			headers:{
+				"Content-Type":"application/json",
+				Authorization:`Bearer ${token}`
+			},
+			body: JSON.stringify({ video_id: lessonId })
+		});
+
+		const data = await res.json();
+		console.log("[unlockLesson] status", res.status, "payload", data);
+
+		if(!res.ok){
+			alert(data.message || "Không thể mở khóa bài học");
+			return;
+		}
+
+		lessons = lessons.map(item => (
+			String(item.id) === String(lessonId)
+				? { ...item, is_unlocked: true }
+				: item
+		));
+		renderLessonList();
+
+		if(data.remaining_tc != null){
+			updateBalanceDisplay(data.balance ?? data.remaining_balance ?? data.remaining_tc);
+		} else {
+			await fetchWalletBalance();
+		}
+
+		if(String(currentVideoId) === String(lessonId)){
+			document.getElementById("unlockPopup").classList.add("hidden");
+			await loadVideoById(lessonId);
+		}
+	}catch(e){
+		console.error("[unlockLesson] error", e);
+		alert("Lỗi server");
+	}
+}
+
+async function resolveInitialVideoId(){
+	if(!videoId){
+		return null;
+	}
+
+	const directOk = await loadVideoById(videoId, { silent: true });
+
+	if(directOk){
+		return videoId;
+	}
+
+	const fallbackCourseId = courseIdParam || videoId;
+	if(!fallbackCourseId){
+		return null;
+	}
+
+	try{
+		const res = await fetch(`http://127.0.0.1:8000/api/manage/courses/${fallbackCourseId}/`, {
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		const data = await res.json();
+		if(res.ok && Array.isArray(data.videos) && data.videos.length){
+			currentCourseId = String(fallbackCourseId);
+			const firstVideoId = String(data.videos[0].id);
+			currentVideoId = firstVideoId;
+			return firstVideoId;
+		}
+	}catch(err){
+		console.error("[resolveInitialVideoId] failed", err);
+	}
+
+	return null;
+}
+
+async function buyCurrentVideo(){
+	if(!currentVideoId){
+		alert("Không xác định được video hiện tại");
+		return;
+	}
+	await unlockLesson(currentVideoId);
 }
 
 
 
 async function buyVideo(){
-
-try{
-
-const price = Number(requiredTC || 0);
-const balance = Number(currentBalance || 0);
-
-if(price > 0 && balance < price){
-	alert("Bạn không đủ tiền");
-	return;
-}
-
-const res=await fetch(
-`http://127.0.0.1:8000/api/video/${videoId}/unlock`,
-{
-method:"POST",
-headers:{
-Authorization:`Bearer ${token}`
-}
-}
-);
-
-const data=await res.json();
-console.log("[buyVideo] status", res.status, "payload", data);
-
-if(res.ok){
-
-document
-.getElementById("unlockPopup")
-.classList.add("hidden");
-
-	setPlayerSource(data.videoUrl);
-
-	// Hide purchase box and show sidebar list placeholder
-	const purchaseBox = document.getElementById("purchaseBox");
-	if(purchaseBox) purchaseBox.classList.add("hidden");
-	const sidebar = document.getElementById("sidebarList");
-	if(sidebar) sidebar.classList.remove("hidden");
-	await loadCourseItems();
-
-alert("Mua video thành công");
-
-// Update cached balance if backend returned remaining_tc
-const newBalance = data.remaining_tc != null ? Number(data.remaining_tc) : balance - price;
-currentBalance = Number.isFinite(newBalance) ? newBalance : balance;
-
-}else{
-	alert(data.message || "Bạn không đủ tiền");
-
-}
-
-}catch(e){
-
-alert("Lỗi server");
-
-}
-
+	await buyCurrentVideo();
 }
 
 
@@ -357,7 +735,7 @@ async function loadComments(videoId){
 try{
 
 const res=await fetch(
-`http://localhost:8000/api/video/${videoId}/comments/`,
+`http://127.0.0.1:8000/api/video/${videoId}/comments/`,
 {
 headers:{
 Authorization:`Bearer ${token}`
@@ -409,6 +787,11 @@ const comment=document.getElementById("commentInput").value;
 
 const rating=document.getElementById("ratingInput").value;
 
+if(!rating || Number(rating) <= 0){
+	alert("Bạn phải đánh giá sao trước khi bình luận!");
+	return;
+}
+
 if(!comment){
 
 alert("Bạn chưa nhập bình luận");
@@ -418,7 +801,7 @@ return;
 }
 
 const res=await fetch(
-`http://localhost:8000/api/video/${videoId}/comment/`,
+`http://127.0.0.1:8000/api/video/${videoId}/comment/`,
 {
 method:"POST",
 headers:{
@@ -426,11 +809,13 @@ headers:{
 Authorization:`Bearer ${token}`
 },
 body:JSON.stringify({
-comment,
+content: comment,
 rating
 })
 }
 );
+
+const payload = await res.json();
 
 if(res.ok){
 
@@ -441,7 +826,7 @@ loadComments(videoId);
 
 }else{
 
-alert("Không gửi được bình luận");
+	alert(payload.message || "Không gửi được bình luận");
 
 }
 
@@ -449,8 +834,29 @@ alert("Không gửi được bình luận");
 
 
 (async () => {
-	await fetchWalletBalance();
-	await loadVideo();
+	const ratingInput = document.getElementById("ratingInput");
+	const commentSubmitBtn = document.getElementById("commentSubmitBtn");
+	if(ratingInput && commentSubmitBtn){
+		const syncCommentButton = () => {
+			const hasRating = Number(ratingInput.value || 0) > 0;
+			commentSubmitBtn.disabled = !hasRating;
+		};
+		ratingInput.addEventListener("change", syncCommentButton);
+		ratingInput.addEventListener("input", syncCommentButton);
+		syncCommentButton();
+	}
+
+	const followBtn = document.getElementById("followBtn");
+	if(followBtn){
+		followBtn.addEventListener("click", toggleFollowCreator);
+	}
+
+	await syncUserData();
+	const initialVideo = await resolveInitialVideoId();
+	if(initialVideo && String(initialVideo) !== String(videoId)){
+		await loadVideoById(initialVideo);
+	}
+	await loadCourseItems();
 })();
 
 </script>

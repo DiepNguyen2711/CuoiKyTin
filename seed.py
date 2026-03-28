@@ -1,64 +1,85 @@
 import os
-import django
-from django.utils import timezone
+from decimal import Decimal
 
-# Khởi tạo môi trường Django để chạy script độc lập
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+import django
+
+
+# Django bootstrap
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 django.setup()
 
-from hourskill_app.models import User, Wallet, Video, Transaction, WatchSession
+from hourskill_app.models import User, Video  # noqa: E402
 
-def run_seed():
-    print("Đang dọn dẹp dữ liệu cũ (nếu có)...")
-    # Xóa user cũ (ngoại trừ tài khoản admin của bạn)
-    User.objects.filter(is_superuser=False).delete()
 
-    print("Đang tạo người dùng mẫu...")
-    # 1. Tạo Creator (Người sáng tạo nội dung)
-    creator_nhan = User.objects.create_user(username='creator_nhan', password='123', is_creator=True)
-    Wallet.objects.create(user=creator_nhan, balance_tc=500.0, balance_vnd=150000)
+def tc_from_duration(duration_seconds: int) -> int:
+    """Compute TC price with rule: (duration_seconds + 30) // 60."""
+    return (int(duration_seconds) + 30) // 60
 
-    # 2. Tạo User VIP
-    vip_trong = User.objects.create_user(username='vip_trong', password='123', is_vip=True, vip_expiry=timezone.now())
-    Wallet.objects.create(user=vip_trong, balance_tc=50.0)
 
-    # 3. Tạo User thường
-    user_quynhanh = User.objects.create_user(username='user_quynhanh', password='123')
-    Wallet.objects.create(user=user_quynhanh, balance_tc=5.0) # Tặng 5 TC mặc định
-
-    print("Đang tạo Video mẫu...")
-    vid1 = Video.objects.create(
-        creator=creator_nhan, 
-        title='Khóa học Python cơ bản cho người mới', 
-        duration_seconds=3600, 
-        price_tc=10.0, 
-        file_url='videos/python_co_ban.mp4'
-    )
-    vid2 = Video.objects.create(
-        creator=creator_nhan, 
-        title='Phân tích dữ liệu với Pandas', 
-        duration_seconds=4500, 
-        price_tc=15.0, 
-        file_url='videos/pandas_data.mp4'
+def main() -> None:
+    # Ensure owner user exists
+    owner, created = User.objects.get_or_create(
+        username="Diep",
+        defaults={
+            "email": "diep@example.com",
+            "is_creator": True,
+        },
     )
 
-    print("Đang tạo Giao dịch (Transaction) mẫu...")
-    # Trọng mua video của Nhân
-    Transaction.objects.create(
-        sender=vip_trong, receiver=creator_nhan, tx_type='SPEND_VIEW', 
-        amount_tc=10.0, status='SUCCESS', reference_video=vid1
-    )
-    # Quỳnh Anh được hệ thống tặng tiền xem quảng cáo
-    Transaction.objects.create(
-        sender=None, receiver=user_quynhanh, tx_type='EARN_ADS', 
-        amount_tc=2.0, status='SUCCESS'
-    )
+    # Set default password if new user, or if current password is different
+    if created or not owner.check_password("123"):
+        owner.set_password("123")
+        owner.save(update_fields=["password"])
 
-    print("Đang tạo Lịch sử xem (Watch Session)...")
-    WatchSession.objects.create(user=vip_trong, video=vid1, watched_seconds=1200, is_unlocked=True)
-    WatchSession.objects.create(user=user_quynhanh, video=vid2, watched_seconds=45, is_unlocked=False)
+    # Keep creator flag enabled for this seed owner
+    if not owner.is_creator:
+        owner.is_creator = True
+        owner.save(update_fields=["is_creator"])
 
-    print("Thành công! Đã bơm toàn bộ dữ liệu mẫu vào Database.")
+    videos_data = [
+        {
+            "title": "Rèn luyện kỹ năng nói hay và trôi chảy",
+            "file_url": "https://drive.google.com/file/d/16TILQzwVv4wN-MkL5a5L04klxL1eHUwq/preview",
+            "duration_seconds": 580,
+        },
+        {
+            "title": "Python tricks - Viết code chuyên nghiệp",
+            "file_url": "https://drive.google.com/file/d/1GgGJ5vOMQSny7hEvDD4UJtW2z1A0JZBf/preview",
+            "duration_seconds": 499,
+        },
+        {
+            "title": "Hướng dẫn cài đặt PowerBI Desktop",
+            "file_url": "https://drive.google.com/file/d/1AmcUGEZ7UQ6dM7xMcit5KKXBZnz0SYIX/preview",
+            "duration_seconds": 465,
+        },
+    ]
 
-if __name__ == '__main__':
-    run_seed()
+    # Detect if price_tc is a real model field in this schema version
+    has_price_field = any(field.name == "price_tc" for field in Video._meta.get_fields())
+
+    for item in videos_data:
+        defaults = {
+            "creator": owner,
+            "description": "Standalone seed video for home feed",
+            "file_url": item["file_url"],
+            "duration_seconds": item["duration_seconds"],
+            "is_standalone": True,
+            "is_active": True,
+            "is_deleted": False,
+        }
+
+        # If schema still stores price_tc, set it during seed.
+        if has_price_field:
+            defaults["price_tc"] = Decimal(tc_from_duration(item["duration_seconds"]))
+
+        Video.objects.update_or_create(
+            title=item["title"],
+            creator=owner,
+            defaults=defaults,
+        )
+
+    print("Seed successful! 3 videos added to Home Page.")
+
+
+if __name__ == "__main__":
+    main()

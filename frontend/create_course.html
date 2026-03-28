@@ -125,6 +125,28 @@ Dán link Drive ở chế độ "Bất kỳ ai có đường liên kết".
 
 <div>
 <label class="block text-sm font-medium text-gray-700 mb-1">
+Thời lượng (giây)
+</label>
+
+<input
+type="number"
+name="duration_seconds"
+required
+min="1"
+step="1"
+class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+placeholder="Ví dụ: 305"
+/>
+
+<p class="text-xs text-gray-400 mt-1">
+Ví dụ: 5 phút 5 giây = 305 giây
+</p>
+
+</div>
+
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
 Thumbnail (ảnh, tuỳ chọn)
 </label>
 
@@ -270,9 +292,18 @@ const description = form.description.value.trim()
 const price = form.bundle_price_tc.value
 const category = form.category.value
 const cleanedVideoUrl = normalizeDriveUrl(videoInput.value)
+const durationSecondsRaw = form.duration_seconds.value
+const durationSeconds = Number.parseInt(durationSecondsRaw, 10)
 
 if(!cleanedVideoUrl){
     errorMsg.innerText = "Vui lòng nhập link Google Drive hợp lệ trước khi gửi."
+    submitBtn.disabled = false
+    submitBtn.innerText = "🚀 Tạo khóa học"
+    return
+}
+
+if(!Number.isInteger(durationSeconds) || durationSeconds <= 0){
+    errorMsg.innerText = "Thời lượng video phải là số nguyên dương (giây)."
     submitBtn.disabled = false
     submitBtn.innerText = "🚀 Tạo khóa học"
     return
@@ -284,6 +315,7 @@ formData.append("description", description)
 formData.append("bundle_price_tc", price)
 if(category) formData.append("category", category)
 formData.append("video_url", cleanedVideoUrl)
+formData.append("duration_seconds", String(durationSeconds))
 
 if(thumbnailInput.files && thumbnailInput.files[0]){
     formData.append("thumbnail", thumbnailInput.files[0])

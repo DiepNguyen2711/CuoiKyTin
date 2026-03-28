@@ -37,8 +37,75 @@ let timer = document.getElementById("timer")
 
 let interval = null
 let rewardGiven = false
+let isProcessing = false
 let tabActive = true
 let lastTime = 0 // FIX: lưu vị trí video trước
+
+function formatTcDisplay(value){
+    return Math.floor(Number(value || 0)).toLocaleString('vi-VN')
+}
+
+function syncGlobalBalance(newBalance){
+    const safeBalance = Math.floor(Number(newBalance || 0))
+
+    const candidates = [
+        document.getElementById("user-wallet-balance"),
+        document.querySelector(".tc-balance"),
+        document.querySelector("#headerWalletBalance span"),
+    ]
+
+    candidates.forEach(node => {
+        if(node){
+            node.innerText = formatTcDisplay(safeBalance)
+        }
+    })
+
+    localStorage.setItem("wallet_balance", String(safeBalance))
+    window.dispatchEvent(new CustomEvent("hourskill:balance-updated", {
+        detail: { balance: safeBalance }
+    }))
+}
+
+async function grantEarnTcReward(){
+    if(isProcessing || rewardGiven){
+        return
+    }
+
+    isProcessing = true
+
+    try{
+        const token = localStorage.getItem("token")
+        if(!token){
+            alert("Bạn cần đăng nhập để nhận TC")
+            return
+        }
+
+        const res = await fetch("http://127.0.0.1:8000/api/earn-tc/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ source: "ad-30s" })
+        })
+
+        const data = await res.json()
+
+        if(!res.ok || data.status !== "success"){
+            alert(data.message || "Không thể cộng TC")
+            return
+        }
+
+        rewardGiven = true
+        const newBalance = Math.floor(Number(data.new_balance || 0))
+        syncGlobalBalance(newBalance)
+        alert(`Bạn đã nhận +1 TC. Số dư mới: ${formatTcDisplay(newBalance)} TC`)
+    }catch(err){
+        alert("Lỗi server khi cộng TC")
+    }finally{
+        isProcessing = false
+    }
+}
 
 
 // cập nhật timer
@@ -67,22 +134,7 @@ function startCounting(){
             clearInterval(interval)
 
             if(!rewardGiven){
-
-                rewardGiven = true
-
-                alert("Bạn đã xem hết video và nhận TC!")
-
-                fetch("/api/video-track/",{
-                    method:"POST",
-                    headers:{
-                        "Content-Type":"application/json",
-                        "X-CSRFToken": getCookie("csrftoken")
-                    },
-                    body:JSON.stringify({
-                        video:"demo",
-                        completed:true
-                    })
-                })
+                grantEarnTcReward()
 
             }
 

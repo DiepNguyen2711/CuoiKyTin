@@ -8,90 +8,42 @@
     <script>
         tailwind.config = { darkMode: 'class' };
     </script>
-    <div class="user-divider"></div>
     <link rel="stylesheet" href="tailwind.css">
+    <script src="js/header-component.js"></script>
+    <script src="js/header-notifications.js"></script>
+    <script src="js/user-state.js"></script>
+    <script src="js/live-filter.js"></script>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
+<body class="profile-page bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div id="appHeaderMount"></div>
+    <script>
+        if (window.HourskillHeader?.mount) {
+            window.HourskillHeader.mount({ pageTitle: 'CÀI ĐẶT' });
+        }
+    </script>
 
-    <header class="bg-[#1a2236] dark:bg-gray-950 text-white sticky top-0 z-50 shadow-md h-16 transition-colors duration-300">
-        <div class="w-full mx-auto px-6 h-full flex justify-between items-center relative">    
-            <div class="flex items-center gap-2">
-                <span class="text-2xl">📚</span>
-                <a href="main.html" class="text-xl font-bold text-blue-400 hover:text-blue-300 transition">HOURSKILLS</a>
+    <main class="w-full max-w-6xl mx-auto px-6 py-8 flex-1 profile-main-content">
+            <div class="flex justify-end mb-4">
+                <a href="main.html" class="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition">← Quay lại</a>
             </div>
 
-            <div class="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 w-[360px]">
-                <input type="text" placeholder="Tìm kiếm khóa học..." 
-                    class="h-9 px-4 w-full rounded-l bg-gray-700 dark:bg-gray-800 text-white border border-transparent dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm placeholder-gray-400 transition-colors duration-300"
-                    id="searchInput">
-
-                <button class="h-9 px-5 bg-blue-600 text-white rounded-r hover:bg-blue-700 transition flex items-center justify-center" id="searchBtn">
-                    🔍
-                </button>
-            </div>
-
-            <div class="flex gap-3 items-center">
-                <button class="p-2 rounded-full hover:bg-gray-700 transition relative">
-                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    🔔
-                </button>
-                
-                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-700 transition focus:outline-none">
-                    <!-- Moon -->
-                    <svg id="theme-toggle-dark-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
-                    </svg>
-
-                    <!-- Sun -->
-                    <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0z"/>
-                    </svg>
-                </button>
-
-                <!-- Wallet -->
-                <div class="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold">
-                    🪙 <span id="user-wallet-balance">0</span> TC
+            <section class="mb-6" aria-label="Tìm kiếm nhanh cài đặt">
+                <div class="home-search max-w-[640px]" role="search">
+                    <input
+                        type="text"
+                        id="settingsSearchInput"
+                        class="home-search-input"
+                        placeholder="Tìm kiếm mục cài đặt..."
+                        autocomplete="off"
+                    >
+                    <button id="settingsSearchBtn" class="home-search-icon" type="button" aria-label="Lọc cài đặt">
+                        🔍
+                    </button>
                 </div>
-                <span class="text-gray-600 mx-3">|</span>
-                <!-- User -->
-                <div class="flex items-center gap-3 bg-gray-700 pr-3 pl-3 py-1 rounded-full border border-gray-600 h-10 hover:bg-gray-600 transition" id="userInfo">
-                    <span class="text-sm font-semibold text-gray-200" id="userName">Chào!</span>
+            </section>
 
-                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-blue-400">
-                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                        </svg>
-                    </div>
-                </div>
-
-                <!-- Logout -->
-                <button id="logoutBtn"
-                    class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition font-medium">
-                    Đăng xuất
-                </button>
-
-            </div>
-        </div>
-    </header>
-
-    <div class="flex flex-1 relative">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-[#f1f5f9] dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6 fixed left-0 top-16 bottom-0 overflow-y-auto z-40 transition-colors duration-300">
-            <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Cài đặt</h2>
-            <nav class="flex flex-col gap-1">   
-                <a href="#profile" class="px-4 py-3 rounded text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-700 font-bold shadow-sm border border-gray-100 dark:border-gray-600 transition-colors">👤 Thông tin cá nhân</a>
-                <a href="#wallet" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">💰 Ví</a>
-                <a href="#security" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">🔐 Bảo mật</a>
-                <a href="#preferences" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">⚙️ Tùy chỉnh</a>
-                <a href="main.html" class="px-4 py-3 rounded text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">← Quay lại</a>
-            </nav>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="ml-64 flex-1 px-10 py-12 bg-white dark:bg-gray-900 min-h-[calc(100vh-4rem)] transition-colors duration-300">
-            
-            <!-- Profile Section -->
-            <section id="profile" class="mb-12">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
+            <section id="profile" class="mb-0" data-settings-item data-search-text="ho so avatar ten nguoi dung email id ngay tham gia">
                 <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-8 transition-colors">Trang Cá Nhân</h1>
                 
                 <!-- Profile Card -->
@@ -99,24 +51,23 @@
                     <div class="flex items-start gap-8">
                         <!-- Avatar -->
                         <div class="flex-shrink-0">
-                            <div class="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center border-4 border-blue-500 shadow-lg">
-                                <svg class="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                                </svg>
-                            </div>
+                            <img id="profileAvatarImg" src="https://placehold.co/128x128/e2e8f0/64748b?text=U" class="w-32 h-32 rounded-full object-cover border-4 border-blue-500 shadow-lg" alt="Avatar" />
+                            <label for="avatarInput" class="mt-3 inline-block text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded cursor-pointer">Chọn ảnh đại diện</label>
+                            <input id="avatarInput" type="file" accept="image/*" class="hidden" />
+                            <p id="avatarMsg" class="text-sm mt-3 min-h-6 px-3 py-2 rounded-md text-gray-700 dark:text-gray-200"></p>
                         </div>
                         
                         <!-- Info -->
                         <div class="flex-1">
                             <div class="mb-6">
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Tên người dùng</p>
-                                <h2 class="text-3xl font-bold text-gray-800 dark:text-white" id="profileUsername">Loading...</h2>
+                                <h2 class="text-3xl font-bold text-gray-800 dark:text-white" id="profileUsername">Guest</h2>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-6">
                                 <div>
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Email</p>
-                                    <p class="text-lg font-medium text-gray-700 dark:text-gray-300" id="profileEmail">Loading...</p>
+                                    <p class="text-lg font-medium text-gray-700 dark:text-gray-300" id="profileEmail">N/A</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">ID Người Dùng</p>
@@ -134,7 +85,7 @@
                                 </div>
                             </div>
 
-                            <button class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                            <button id="editProfileScrollBtn" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                                 ✏️ Chỉnh Sửa Hồ Sơ
                             </button>
                         </div>
@@ -143,22 +94,29 @@
             </section>
 
             <!-- Wallet Section -->
-            <section id="wallet" class="mb-12">
-                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 transition-colors">💰 Ví Của Bạn</h2>
+            <section id="wallet" class="mb-0" data-settings-item data-search-text="tai chinh vi tc vip nap rut doanh thu">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 transition-colors">💰 Tài Chính Của Bạn</h2>
                 
-                <div class="grid grid-cols-2 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <!-- TC Balance -->
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-6 border border-blue-200 dark:border-blue-700">
-                        <p class="text-sm text-blue-600 dark:text-blue-400 font-medium mb-2">Time Credit (TC)</p>
+                        <p class="text-sm text-blue-600 dark:text-blue-400 font-medium mb-2">Ví tiêu dùng (TC)</p>
                         <p class="text-4xl font-bold text-blue-900 dark:text-blue-100 mb-2" id="balanceTC">--</p>
                         <p class="text-xs text-blue-600 dark:text-blue-400">Được dùng để mua khóa học</p>
                     </div>
 
-                    <!-- VND Balance -->
+                    <!-- VIP Status -->
                     <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-6 border border-green-200 dark:border-green-700">
-                        <p class="text-sm text-green-600 dark:text-green-400 font-medium mb-2">Số Dư VND</p>
-                        <p class="text-4xl font-bold text-green-900 dark:text-green-100 mb-2" id="balanceVND">--</p>
-                        <p class="text-xs text-green-600 dark:text-green-400">Có thể rút tiền</p>
+                        <p class="text-sm text-green-600 dark:text-green-400 font-medium mb-2">Gói VIP</p>
+                        <p class="text-2xl font-bold text-green-900 dark:text-green-100 mb-2" id="vipStatusLabel">Thường</p>
+                        <p class="text-xs text-green-700 dark:text-green-300">Hết hạn: <span id="vip-expiry-date" class="font-semibold text-green-900 dark:text-green-100">--</span></p>
+                    </div>
+
+                    <!-- Creator Revenue -->
+                    <div class="bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg p-6 border border-amber-200 dark:border-amber-700">
+                        <p class="text-sm text-amber-700 dark:text-amber-300 font-medium mb-2">Túi doanh thu (VND)</p>
+                        <p class="text-lg font-bold text-amber-900 dark:text-amber-100">Pending: <span id="revenuePending">0 VND</span></p>
+                        <p class="text-lg font-bold text-amber-900 dark:text-amber-100">Available: <span id="revenueAvailable">0 VND</span></p>
                     </div>
                 </div>
 
@@ -166,21 +124,77 @@
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors">
                     <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Hành Động</h3>
                     <div class="flex gap-4">
-                        <button class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                        <button id="rechargeBtn" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                             💳 Nạp TC
                         </button>
-                        <button class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
-                            💵 Rút VND
+                        <button id="buyVipBtn" class="flex-1 px-4 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-medium">
+                            👑 Mua VIP (149.000đ)
                         </button>
-                        <button class="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
-                            📊 Lịch Sử Giao Dịch
+                        <button id="withdrawBtn" class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                            💵 Rút VND
                         </button>
                     </div>
                 </div>
             </section>
+            </div>
+
+            <section id="security" class="mb-12" data-settings-item data-search-text="bao mat username mat khau doi username doi mat khau">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 transition-colors">🔐 Bảo mật</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Đổi Username</h3>
+                        <label class="text-sm text-gray-600 dark:text-gray-400">Username mới</label>
+                        <input id="newUsernameInput" type="text" class="mt-1 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-3 py-2" placeholder="Nhập username mới" />
+                        <p id="usernameCheckMsg" class="text-xs mt-2 text-gray-500 dark:text-gray-400"></p>
+                        <button id="saveUsernameBtn" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Lưu Username</button>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Đổi mật khẩu</h3>
+                        <div class="space-y-3">
+                            <input id="oldPasswordInput" type="password" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-3 py-2" placeholder="Mật khẩu hiện tại" />
+                            <input id="newPassword1Input" type="password" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-3 py-2" placeholder="Mật khẩu mới" />
+                            <input id="newPassword2Input" type="password" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-3 py-2" placeholder="Nhập lại mật khẩu mới" />
+                        </div>
+                        <p id="passwordMsg" class="text-xs mt-2 text-gray-500 dark:text-gray-400"></p>
+                        <button id="changePasswordBtn" class="mt-3 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">Đổi mật khẩu</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="preferences" class="mb-12" data-settings-item data-search-text="tuy chinh dark mode thong bao binh luan follow cai dat">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 transition-colors">⚙️ Tùy chỉnh</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors space-y-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800 dark:text-white">Dark Mode</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Lưu giao diện sáng/tối trên trình duyệt này</p>
+                        </div>
+                        <input id="prefDarkMode" type="checkbox" class="w-5 h-5" />
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800 dark:text-white">Thông báo bình luận</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Hiện chuông khi có bình luận mới</p>
+                        </div>
+                        <input id="prefNotifyComments" type="checkbox" class="w-5 h-5" />
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800 dark:text-white">Thông báo follow</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Hiện chuông khi có người theo dõi mới</p>
+                        </div>
+                        <input id="prefNotifyFollows" type="checkbox" class="w-5 h-5" />
+                    </div>
+
+                    <p id="prefMsg" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                </div>
+            </section>
 
             <!-- Statistics Section -->
-            <section id="stats" class="mb-12">
+            <section id="stats" class="mb-12" data-settings-item data-search-text="thong ke khoa hoc mua tao theo doi nguoi theo doi">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 transition-colors">📈 Thống Kê</h2>
                 
                 <div class="grid grid-cols-4 gap-4">
@@ -203,90 +217,665 @@
                 </div>
             </section>
 
-        </main>
-    </div>
+    </main>
 
     <script>
-        // Theme Toggle
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-        const htmlRoot = document.getElementById('html-root');
-
-        function initTheme() {
-            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                htmlRoot.classList.add('dark');
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                htmlRoot.classList.remove('dark');
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
-        }
-
-        initTheme();
-
-        themeToggleBtn.addEventListener('click', function() {
-            if (htmlRoot.classList.contains('dark')) {
-                htmlRoot.classList.remove('dark');
-                localStorage.setItem('color-theme', 'light');
-                themeToggleDarkIcon.classList.remove('hidden');
-                themeToggleLightIcon.classList.add('hidden');
-            } else {
-                htmlRoot.classList.add('dark');
-                localStorage.setItem('color-theme', 'dark');
-                themeToggleDarkIcon.classList.add('hidden');
-                themeToggleLightIcon.classList.remove('hidden');
-            }
-        });
-
-        // Check Auth
+        const API_BASE = 'http://127.0.0.1:8000';
         const token = localStorage.getItem('token');
         if (!token) {
             window.location.href = 'login.html';
         }
 
-        // Load Profile Data
-        const username = localStorage.getItem('username') || 'User';
-        const email = localStorage.getItem('email') || 'N/A';
-        const userId = localStorage.getItem('user_id') || '--';
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const htmlRoot = document.getElementById('html-root');
+        const bodyRoot = document.body;
 
-        document.getElementById('userName').innerText = `Chào, ${username}`;
-        document.getElementById('profileUsername').innerText = username;
-        document.getElementById('profileEmail').innerText = email;
-        document.getElementById('profileUserId').innerText = userId;
-        document.getElementById('profileJoinDate').innerText = new Date().toLocaleDateString('vi-VN');
-
-        // Load Wallet Data
-        async function loadWalletData() {
-            try {
-                const response = await fetch('http://127.0.0.1:8000/api/wallet/', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('balanceTC').innerText = parseFloat(data.balance_tc || 0).toFixed(2) + ' TC';
-                    document.getElementById('balanceVND').innerText = parseInt(data.balance_vnd || 0).toLocaleString('vi-VN') + ' ₫';
-                }
-            } catch (err) {
-                console.error('Error loading wallet:', err);
-                document.getElementById('balanceTC').innerText = '0.00 TC';
-                document.getElementById('balanceVND').innerText = '0 ₫';
+        function setHeaderBalanceFromCache() {
+            const cached = localStorage.getItem('wallet_balance');
+            if (cached != null) {
+                updateBalanceDisplay(cached);
             }
         }
 
-        loadWalletData();
+        async function parseJsonResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                if (!response.ok) {
+                    throw new Error('Server returned HTML instead of JSON');
+                }
+                throw new Error('Phan hoi khong phai JSON');
+            }
+            return response.json();
+        }
 
-        // Logout
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user_id');
-            localStorage.removeItem('username');
-            localStorage.removeItem('email');
-            window.location.href = 'login.html';
+        function setDarkMode(enabled) {
+            if (enabled) {
+                htmlRoot.classList.add('dark');
+                bodyRoot.classList.add('dark');
+                if (themeToggleLightIcon) themeToggleLightIcon.classList.remove('hidden');
+                if (themeToggleDarkIcon) themeToggleDarkIcon.classList.add('hidden');
+                localStorage.setItem('color-theme', 'dark');
+            } else {
+                htmlRoot.classList.remove('dark');
+                bodyRoot.classList.remove('dark');
+                if (themeToggleDarkIcon) themeToggleDarkIcon.classList.remove('hidden');
+                if (themeToggleLightIcon) themeToggleLightIcon.classList.add('hidden');
+                localStorage.setItem('color-theme', 'light');
+            }
+            const prefDark = document.getElementById('prefDarkMode');
+            if (prefDark) prefDark.checked = enabled;
+        }
+
+        function applyUserToProfileHeader(userData) {
+            const username = userData?.username || 'Guest';
+            const profileName = document.getElementById('profileUsername');
+            const userName = document.getElementById('headerUserGreeting');
+            const profileEmail = document.getElementById('profileEmail');
+            const profileUserId = document.getElementById('profileUserId');
+            const crown = document.getElementById('headerVipCrown');
+
+            if (userName) userName.innerText = `Chào, ${username}`;
+            if (profileName) profileName.innerText = formatDisplayName(username, Boolean(userData?.is_vip));
+            if (profileEmail) profileEmail.innerText = userData?.email || 'N/A';
+            if (profileUserId) profileUserId.innerText = userData?.id || '--';
+            if (crown) crown.classList.toggle('hidden', !Boolean(userData?.is_vip));
+
+            const avatarUrl = userData?.avatar_url || 'https://placehold.co/128x128/e2e8f0/64748b?text=U';
+            const profileAvatar = document.getElementById('profileAvatarImg');
+            const headerAvatar = document.getElementById('headerAvatar');
+            if (profileAvatar) profileAvatar.src = avatarUrl;
+            if (headerAvatar) headerAvatar.src = avatarUrl;
+
+            updateBalanceDisplay(userData?.tc_balance ?? 0, { emitEvent: false });
+        }
+
+        function updateBalanceDisplay(newAmount, options = {}) {
+            const { emitEvent = true } = options;
+            const safe = Math.max(0, Math.floor(Number(newAmount || 0)));
+            const txt = safe.toLocaleString('vi-VN');
+            ['user-wallet-balance'].forEach((id) => {
+                const node = document.getElementById(id);
+                if (node) node.innerText = txt;
+            });
+            const balanceTC = document.getElementById('balanceTC');
+            if (balanceTC) balanceTC.innerText = `${txt} TC`;
+            localStorage.setItem('wallet_balance', String(safe));
+            if (emitEvent && window.HourskillUserState?.setUser) {
+                window.HourskillUserState.setUser({ tc_balance: safe });
+            }
+            if (emitEvent) {
+                window.dispatchEvent(new CustomEvent('hourskill:balance-updated', { detail: { balance: safe } }));
+            }
+        }
+
+        function formatDisplayName(username, isVip) {
+            return isVip ? `${username} 👑` : username;
+        }
+
+        function pad2(value) {
+            return String(value).padStart(2, '0');
+        }
+
+        function formatDateDDMMYYYY(dateObj) {
+            if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) {
+                return '--';
+            }
+            return `${pad2(dateObj.getDate())}/${pad2(dateObj.getMonth() + 1)}/${dateObj.getFullYear()}`;
+        }
+
+        function parseJoinDate(value) {
+            if (!value) return null;
+
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+            }
+
+            const raw = String(value).trim();
+            const ddmmyyyy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (ddmmyyyy) {
+                const day = Number(ddmmyyyy[1]);
+                const monthIndex = Number(ddmmyyyy[2]) - 1;
+                const year = Number(ddmmyyyy[3]);
+                const parsed = new Date(year, monthIndex, day);
+                if (
+                    parsed.getFullYear() === year
+                    && parsed.getMonth() === monthIndex
+                    && parsed.getDate() === day
+                ) {
+                    return parsed;
+                }
+                return null;
+            }
+
+            const parsed = new Date(raw);
+            if (Number.isNaN(parsed.getTime())) {
+                return null;
+            }
+            return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+        }
+
+        function addOneMonthSafe(sourceDate) {
+            if (!(sourceDate instanceof Date) || Number.isNaN(sourceDate.getTime())) {
+                return null;
+            }
+
+            const year = sourceDate.getFullYear();
+            const month = sourceDate.getMonth();
+            const day = sourceDate.getDate();
+
+            let targetYear = year;
+            let targetMonth = month + 1;
+            if (targetMonth > 11) {
+                targetMonth = 0;
+                targetYear += 1;
+            }
+
+            const maxDayInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+            const safeDay = Math.min(day, maxDayInTargetMonth);
+            return new Date(targetYear, targetMonth, safeDay);
+        }
+
+        function calculateVIPExpiry(joinDateStr) {
+            const joinDate = parseJoinDate(joinDateStr);
+            if (!joinDate) {
+                return '--';
+            }
+            const expiryDate = addOneMonthSafe(joinDate);
+            return formatDateDDMMYYYY(expiryDate);
+        }
+
+        function calculateVipRenewalExpiry(currentExpiryDateStr) {
+            const currentExpiry = parseJoinDate(currentExpiryDateStr);
+            if (!currentExpiry) {
+                return '--';
+            }
+            return formatDateDDMMYYYY(addOneMonthSafe(currentExpiry));
+        }
+
+        function runSimpleVipVerification() {
+            const a = Math.floor(Math.random() * 8) + 2;
+            const b = Math.floor(Math.random() * 8) + 2;
+            const answer = window.prompt(`Xac minh mua VIP: ${a} + ${b} = ?`);
+            if (answer == null) return false;
+            return Number(answer.trim()) === (a + b);
+        }
+
+        function injectVipExpiryDate(joinDateInput) {
+            const vipExpiryEl = document.getElementById('vip-expiry-date');
+            if (!vipExpiryEl) return;
+            vipExpiryEl.innerText = calculateVIPExpiry(joinDateInput);
+        }
+
+        function applyFinancialData(data) {
+            const isVip = Boolean(data.is_vip);
+            const joinDateSource = data.join_date_display || data.join_date || data.date_joined;
+            const currentExpiryFromApi = data.vip_expiry_display || formatDateDDMMYYYY(parseJoinDate(data.vip_expiry));
+
+            const vipStatusLabel = document.getElementById('vipStatusLabel');
+            if (vipStatusLabel) vipStatusLabel.innerText = isVip ? 'VIP đang hoạt động' : 'Thường';
+
+            const vipExpiryEl = document.getElementById('vip-expiry-date');
+            if (vipExpiryEl) {
+                if (isVip) {
+                    vipExpiryEl.innerText = currentExpiryFromApi && currentExpiryFromApi !== '--'
+                        ? currentExpiryFromApi
+                        : calculateVIPExpiry(joinDateSource);
+                } else {
+                    vipExpiryEl.innerText = 'Chưa kích hoạt';
+                }
+            }
+
+            const pending = Math.max(0, Number(data.creator_pending_vnd ?? data.creator_pending_balance ?? 0));
+            const available = Math.max(0, Number(data.creator_available_vnd ?? data.creator_available_balance ?? 0));
+            const pendingNode = document.getElementById('revenuePending');
+            const availableNode = document.getElementById('revenueAvailable');
+            if (pendingNode) pendingNode.innerText = `${Math.floor(pending).toLocaleString('vi-VN')} VND`;
+            if (availableNode) availableNode.innerText = `${Math.floor(available).toLocaleString('vi-VN')} VND`;
+        }
+
+        function getCurrentVipContext() {
+            const cachedUser = window.HourskillUserState?.getCachedUser?.() || {};
+            const vipExpiryText = (document.getElementById('vip-expiry-date')?.innerText || '').trim();
+            return {
+                isVip: Boolean(cachedUser.is_vip),
+                currentExpiryText: vipExpiryText,
+            };
+        }
+
+        async function syncUserData() {
+            try {
+                const data = await window.HourskillUserState.fetchCurrentUser({
+                    apiBase: API_BASE,
+                    token,
+                    timeoutMs: 4500,
+                });
+                const joinDateText = formatDateDDMMYYYY(parseJoinDate(data?.join_date_display || data?.join_date || data?.date_joined || new Date()));
+                document.getElementById('profileJoinDate').innerText = joinDateText;
+                applyUserToProfileHeader(data || { username: 'Guest', tc_balance: 0 });
+                applyFinancialData(data);
+            } catch (err) {
+                applyUserToProfileHeader({ username: 'Guest', tc_balance: 0, email: '', is_vip: false });
+                document.getElementById('profileJoinDate').innerText = formatDateDDMMYYYY(new Date());
+                const vipExpiryEl = document.getElementById('vip-expiry-date');
+                if (vipExpiryEl) vipExpiryEl.innerText = 'Chưa kích hoạt';
+                console.error('[syncUserData] failed', err);
+            }
+        }
+
+        async function fetchUserSettings() {
+            const prefMsg = document.getElementById('prefMsg');
+            try {
+                const response = await fetch(`${API_BASE}/api/user/settings/`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await parseJsonResponse(response);
+                if (!response.ok) {
+                    throw new Error(data.message || 'Không tải được cài đặt');
+                }
+
+                const darkMode = Boolean(data.dark_mode);
+                const notifyComments = Boolean(data.notify_comments);
+                const notifyFollows = Boolean(data.notify_follows);
+
+                setDarkMode(darkMode);
+                document.getElementById('prefNotifyComments').checked = notifyComments;
+                document.getElementById('prefNotifyFollows').checked = notifyFollows;
+
+                if (window.HourskillUserState?.setUser) {
+                    window.HourskillUserState.setUser({
+                        dark_mode: darkMode,
+                        notify_comments: notifyComments,
+                        notify_follows: notifyFollows,
+                    });
+                }
+
+                if (prefMsg) {
+                    prefMsg.innerText = 'Đã tải cài đặt.';
+                    prefMsg.className = 'text-xs text-gray-500 dark:text-gray-400';
+                }
+            } catch (err) {
+                if (prefMsg) {
+                    prefMsg.innerText = 'Không tải được cài đặt, dùng mặc định tạm thời.';
+                    prefMsg.className = 'text-xs text-amber-600';
+                }
+                setDarkMode(false);
+            }
+        }
+
+        async function patchUserSetting(payload) {
+            const msgNode = document.getElementById('prefMsg');
+            try {
+                const response = await fetch(`${API_BASE}/api/user/settings/`, {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await parseJsonResponse(response);
+                if (!response.ok) {
+                    throw new Error(data.message || 'Lưu cài đặt thất bại');
+                }
+
+                if (window.HourskillUserState?.setUser) {
+                    window.HourskillUserState.setUser({
+                        dark_mode: Boolean(data.dark_mode),
+                        notify_comments: Boolean(data.notify_comments),
+                        notify_follows: Boolean(data.notify_follows),
+                    });
+                }
+
+                msgNode.innerText = 'Đã lưu cài đặt.';
+                msgNode.className = 'text-xs text-emerald-600';
+                return data;
+            } catch (error) {
+                msgNode.innerText = error.message || 'Lưu cài đặt thất bại';
+                msgNode.className = 'text-xs text-red-500';
+                throw error;
+            }
+        }
+
+        window.syncUserData = syncUserData;
+        window.updateBalanceDisplay = updateBalanceDisplay;
+
+        async function checkUsernameAvailability() {
+            const username = (document.getElementById('newUsernameInput').value || '').trim();
+            const msgNode = document.getElementById('usernameCheckMsg');
+            if (!username) {
+                msgNode.innerText = '';
+                return false;
+            }
+
+            const res = await fetch(`${API_BASE}/api/me/check-username/?username=${encodeURIComponent(username)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                msgNode.innerText = data.message || 'Không kiểm tra được username';
+                msgNode.className = 'text-xs mt-2 text-red-500';
+                return false;
+            }
+
+            msgNode.innerText = data.available ? 'Username có thể dùng' : 'Username đã tồn tại';
+            msgNode.className = `text-xs mt-2 ${data.available ? 'text-emerald-600' : 'text-red-500'}`;
+            return Boolean(data.available);
+        }
+
+        async function saveUsername() {
+            const username = (document.getElementById('newUsernameInput').value || '').trim();
+            const available = await checkUsernameAvailability();
+            if (!available) return;
+
+            const res = await fetch(`${API_BASE}/api/me/update-username/`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username })
+            });
+            const data = await res.json();
+            const msgNode = document.getElementById('usernameCheckMsg');
+            if (!res.ok) {
+                msgNode.innerText = data.message || 'Đổi username thất bại';
+                msgNode.className = 'text-xs mt-2 text-red-500';
+                return;
+            }
+
+            msgNode.innerText = 'Đổi username thành công';
+            msgNode.className = 'text-xs mt-2 text-emerald-600';
+            await syncUserData();
+        }
+
+        async function changePassword() {
+            const old_password = document.getElementById('oldPasswordInput').value;
+            const new_password1 = document.getElementById('newPassword1Input').value;
+            const new_password2 = document.getElementById('newPassword2Input').value;
+            const msgNode = document.getElementById('passwordMsg');
+
+            const res = await fetch(`${API_BASE}/api/me/change-password/`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ old_password, new_password1, new_password2 })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                msgNode.innerText = data.message || 'Đổi mật khẩu thất bại';
+                msgNode.className = 'text-xs mt-2 text-red-500';
+                return;
+            }
+
+            msgNode.innerText = data.message || 'Đổi mật khẩu thành công';
+            msgNode.className = 'text-xs mt-2 text-emerald-600';
+            document.getElementById('oldPasswordInput').value = '';
+            document.getElementById('newPassword1Input').value = '';
+            document.getElementById('newPassword2Input').value = '';
+        }
+
+        async function uploadAvatar(file) {
+            if (!file) return;
+            const msgNode = document.getElementById('avatarMsg');
+            const fd = new FormData();
+            fd.append('avatar', file);
+            msgNode.innerText = 'Đang tải ảnh đại diện...';
+            msgNode.className = 'text-sm mt-3 min-h-6 px-3 py-2 rounded-md bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 font-medium';
+
+            const res = await fetch(`${API_BASE}/api/me/upload-avatar/`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                body: fd
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                msgNode.innerText = data.message || 'Upload avatar thất bại';
+                msgNode.className = 'text-sm mt-3 min-h-6 px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-200 font-semibold';
+                return;
+            }
+
+            const avatarUrl = data.avatar_url || '';
+            if (avatarUrl) {
+                document.getElementById('profileAvatarImg').src = avatarUrl;
+                document.getElementById('headerAvatar').src = avatarUrl;
+            }
+
+            msgNode.innerText = 'Cập nhật avatar thành công';
+            msgNode.className = 'text-sm mt-3 min-h-6 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-200 font-semibold';
+        }
+
+        async function savePreferences() {
+            const notify_comments = Boolean(document.getElementById('prefNotifyComments').checked);
+            const notify_follows = Boolean(document.getElementById('prefNotifyFollows').checked);
+            await patchUserSetting({ notify_comments, notify_follows });
+        }
+
+        async function rechargeTc() {
+            const amountInput = window.prompt('Nhap so tien VND muon nap (boi so cua 10.000):', '10000');
+            if (!amountInput) return;
+            const amountVnd = Number(amountInput);
+
+            const res = await fetch(`${API_BASE}/api/recharge/`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ amount_vnd: amountVnd })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.message || 'Nap TC that bai');
+                return;
+            }
+
+            updateBalanceDisplay(data.balance || 0);
+            await syncUserData();
+            alert(data.message || 'Nap TC thanh cong');
+        }
+
+        async function purchaseVip() {
+            const { isVip, currentExpiryText } = getCurrentVipContext();
+
+            if (!isVip) {
+                const confirmedPurchase = window.confirm('Xác nhận mua gói VIP 149.000 VNĐ?');
+                if (!confirmedPurchase) return;
+
+                const verified = runSimpleVipVerification();
+                if (!verified) {
+                    alert('Xac minh that bai. Vui long thu lai.');
+                    return;
+                }
+            } else {
+                const nextExpiry = calculateVipRenewalExpiry(currentExpiryText);
+                const renewMessage = nextExpiry !== '--'
+                    ? `Bạn muốn gia hạn VIP?\nHệ thống sẽ cộng thêm 1 tháng: ${currentExpiryText} -> ${nextExpiry}`
+                    : 'Bạn muốn gia hạn VIP?\nHệ thống sẽ cộng thêm 1 tháng vào hạn hiện tại.';
+                const confirmedRenewal = window.confirm(renewMessage);
+                if (!confirmedRenewal) return;
+            }
+
+            const res = await fetch(`${API_BASE}/api/purchase-vip/`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ package: 'vip_30d' })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.message || 'Mua VIP that bai');
+                return;
+            }
+
+            const nextBalance = Number(data.balance ?? data.balance_tc ?? NaN);
+            if (!Number.isNaN(nextBalance)) {
+                updateBalanceDisplay(nextBalance);
+            }
+
+            const nextExpiryText = data.vip_expiry_display || formatDateDDMMYYYY(parseJoinDate(data.vip_expiry));
+            const vipExpiryEl = document.getElementById('vip-expiry-date');
+            if (vipExpiryEl && nextExpiryText && nextExpiryText !== '--') {
+                vipExpiryEl.innerText = nextExpiryText;
+            }
+
+            const vipStatusLabel = document.getElementById('vipStatusLabel');
+            if (vipStatusLabel) {
+                vipStatusLabel.innerText = 'VIP đang hoạt động';
+            }
+
+            if (window.HourskillUserState?.setUser) {
+                window.HourskillUserState.setUser({
+                    is_vip: true,
+                    vip_expiry: data.vip_expiry || null,
+                    vip_expiry_display: data.vip_expiry_display || nextExpiryText,
+                    tc_balance: Number.isNaN(nextBalance) ? undefined : nextBalance,
+                });
+            }
+
+            await syncUserData();
+            alert(data.message || 'Mua/Gia han VIP thanh cong');
+        }
+
+        async function requestWithdraw() {
+            const amountInput = window.prompt('Nhap so VND muon rut (de trong de rut toan bo available):', '');
+            const payload = {};
+            if (amountInput && amountInput.trim()) {
+                payload.amount_vnd = Number(amountInput);
+            }
+
+            const res = await fetch(`${API_BASE}/api/withdraw-request/`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.message || 'Gui yeu cau rut that bai');
+                return;
+            }
+
+            await syncUserData();
+            alert(`${data.message} Ma yeu cau: ${data.request_id}`);
+        }
+
+        document.getElementById('newUsernameInput').addEventListener('blur', () => {
+            checkUsernameAvailability().catch(() => {});
         });
+        document.getElementById('saveUsernameBtn').addEventListener('click', saveUsername);
+        document.getElementById('changePasswordBtn').addEventListener('click', changePassword);
+        document.getElementById('avatarInput').addEventListener('change', (event) => {
+            uploadAvatar(event.target.files?.[0]).catch(() => {});
+        });
+        document.getElementById('prefNotifyComments').addEventListener('change', savePreferences);
+        document.getElementById('prefNotifyFollows').addEventListener('change', savePreferences);
+        document.getElementById('rechargeBtn').addEventListener('click', () => rechargeTc().catch(() => {}));
+        document.getElementById('buyVipBtn').addEventListener('click', () => purchaseVip().catch(() => {}));
+        document.getElementById('withdrawBtn').addEventListener('click', () => requestWithdraw().catch(() => {}));
+        document.getElementById('editProfileScrollBtn').addEventListener('click', () => {
+            document.getElementById('security').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        const settingsSearchInput = document.getElementById('settingsSearchInput');
+        const settingsSearchBtn = document.getElementById('settingsSearchBtn');
+        const settingsFilter = window.HourskillLiveFilter?.create({
+            inputEl: settingsSearchInput,
+            buttonEl: settingsSearchBtn,
+            getItems: () => Array.from(document.querySelectorAll('[data-settings-item]')),
+            getText: (node) => [
+                node.dataset.searchText || '',
+                node.textContent || '',
+            ].join(' '),
+            onAfterFilter: ({ visibleCount, query }) => {
+                const prefMsg = document.getElementById('prefMsg');
+                if (!prefMsg) return;
+                if (!query) {
+                    prefMsg.innerText = '';
+                    prefMsg.className = 'text-xs text-gray-500 dark:text-gray-400';
+                    return;
+                }
+                prefMsg.innerText = visibleCount > 0
+                    ? `Tìm thấy ${visibleCount} mục phù hợp.`
+                    : 'Không có mục cài đặt phù hợp.';
+                prefMsg.className = visibleCount > 0 ? 'text-xs text-emerald-600' : 'text-xs text-amber-600';
+            }
+        });
+
+        window.addEventListener('hourskill:header-search', (event) => {
+            const query = event?.detail?.query || '';
+            if (settingsSearchInput) {
+                settingsSearchInput.value = query;
+                settingsSearchInput.focus();
+            }
+            if (settingsFilter) {
+                settingsFilter.apply(query);
+            }
+        });
+
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', () => setDarkMode(!htmlRoot.classList.contains('dark')));
+        }
+        document.getElementById('prefDarkMode').addEventListener('change', async (event) => {
+            const enabled = Boolean(event.target.checked);
+            setDarkMode(enabled);
+            try {
+                await patchUserSetting({ dark_mode: enabled });
+            } catch (error) {
+                setDarkMode(!enabled);
+            }
+        });
+
+        const cachedAvatar = localStorage.getItem('avatar_url');
+        if (cachedAvatar) {
+            const headerAvatar = document.getElementById('headerAvatar');
+            if (headerAvatar) headerAvatar.src = cachedAvatar;
+        }
+
+        initHeaderNotifications({ apiBase: API_BASE, token });
+
+        const cachedUser = window.HourskillUserState?.getCachedUser
+            ? window.HourskillUserState.getCachedUser()
+            : { username: 'Guest', tc_balance: 0, is_vip: false, email: '' };
+        applyUserToProfileHeader(cachedUser);
+
+        if (window.HourskillUserState?.subscribe) {
+            window.HourskillUserState.subscribe((userData) => {
+                applyUserToProfileHeader(userData || {});
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            setHeaderBalanceFromCache();
+            const joinTextFromUi = (document.getElementById('profileJoinDate')?.innerText || '').trim();
+            if (joinTextFromUi && joinTextFromUi !== '--') {
+                injectVipExpiryDate(joinTextFromUi);
+            }
+            await fetchUserSettings();
+            await syncUserData();
+        });
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('username');
+                localStorage.removeItem('email');
+                localStorage.removeItem('wallet_balance');
+                localStorage.removeItem('is_vip');
+                window.location.href = 'login.html';
+            });
+        }
     </script>
 </body>
 </html>

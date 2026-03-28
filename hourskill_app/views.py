@@ -1,15 +1,17 @@
 import json
 import re
 import secrets
+import calendar
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import authenticate
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
 from django.core.cache import cache
 from django.core import signing
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Avg, Count, F, Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -19,6 +21,7 @@ from django.views.decorators.http import require_GET, require_POST
 from .models import (
     Category,
     CommentReview,
+    CreatorAccount,
     Course,
     Follow,
     Notification,
@@ -27,11 +30,12 @@ from .models import (
     UserBehavior,
     UserProfile,
     Video,
+    VideoAccess,
     Wallet,
     WatchSession,
+    WithdrawalRequest,
 )
 from .forms import CourseForm, VideoForm
-from .services import process_view_payment
 
 
 def _json_error(message, status=400):
@@ -50,6 +54,76 @@ def _json_success(payload=None, status=200):
     if payload:
         data.update(payload)
     return JsonResponse(data, status=status)
+
+
+def _tc_to_int(value):
+    """Normalize TC values to non-decimal integer for API responses."""
+    try:
+        return max(0, int(Decimal(str(value))))
+    except Exception:
+        return 0
+
+
+def _format_tc_vi(value):
+    """Format integer TC with Vietnamese thousands separator using dots."""
+    return f"{_tc_to_int(value):,}".replace(',', '.')
+
+
+def _format_vnd_vi(value):
+    """Format integer VND with Vietnamese thousands separator using dots."""
+    try:
+        return f"{max(0, int(Decimal(str(value)))):,}".replace(',', '.')
+    except Exception:
+        return '0'
+
+
+def _profile_balance_tc_int(profile):
+    """Read profile TC balance using new field with legacy fallback."""
+    if profile is None:
+        return 0
+    balance_value = profile.balance_tc if profile.balance_tc is not None else profile.wallet_balance
+    return _tc_to_int(balance_value)
+
+
+def _sync_profile_legacy_balance(profile):
+    """Mirror decimal balance_tc into legacy wallet_balance integer field."""
+    balance_int = _profile_balance_tc_int(profile)
+    updates = []
+    if profile.wallet_balance != balance_int:
+        profile.wallet_balance = balance_int
+        updates.append('wallet_balance')
+    if profile.balance_tc != Decimal(str(balance_int)):
+        profile.balance_tc = Decimal(str(balance_int))
+        updates.append('balance_tc')
+    if updates:
+        profile.save(update_fields=updates)
+    return balance_int
+
+
+def _base_price_minutes(video):
+    """Compute base TC price from video duration in minutes unless custom base_price is set."""
+    custom = _tc_to_int(getattr(video, 'base_price', 0))
+    if custom > 0:
+        return custom
+    duration = max(0, int(video.duration_seconds or 0))
+    return (duration + 30) // 60
+
+
+def _compute_dynamic_price_tc(video):
+    """Dynamic pricing: base from duration + quality bonus from average rating."""
+    base_price = _base_price_minutes(video)
+    avg_rating = (
+        CommentReview.objects.filter(video=video, rating__isnull=False)
+        .aggregate(avg=Avg('rating'))
+        .get('avg')
+    )
+    avg_value = float(avg_rating or 0)
+    bonus = 0
+    if avg_value > 4.8:
+        bonus = 5
+    elif avg_value > 4.5:
+        bonus = 2
+    return max(0, base_price + bonus), round(avg_value, 2)
 
 
 def _parse_json_body(request):
@@ -138,56 +212,291 @@ def _extract_drive_src(raw_value):
     return raw_value.strip()
 
 
+def _create_notification(recipient, sender, notification_type, text, link='', video=None):
+    """Create a notification row while isolating side effects from main flows."""
+    try:
+        if not recipient:
+            return None
+        return Notification.objects.create(
+            recipient=recipient,
+            sender=sender,
+            video=video,
+            notification_type=notification_type,
+            text=text,
+            link=link or '',
+        )
+    except Exception:
+        # Notifications should not break core actions like follow/comment.
+        return None
+
+
+def _get_or_create_profile(user):
+    """Get user profile with safe defaults used by profile-centric APIs."""
+    return UserProfile.objects.get_or_create(
+        user=user,
+        defaults={
+            'wallet_balance': 5,
+            'balance_tc': Decimal('5.00'),
+            'notify_comments': True,
+            'notify_follows': True,
+        },
+    )[0]
+
+
+def _refresh_vip_state(user, profile=None):
+    """Keep VIP flags synced between user/profile and auto-expire outdated subscriptions."""
+    profile = profile or _get_or_create_profile(user)
+    now = timezone.now()
+
+    expiry = profile.vip_expiry or user.vip_expiry
+    flagged = bool(profile.is_vip or user.is_vip)
+    is_active = bool(flagged and expiry and expiry > now)
+
+    if flagged and expiry and expiry <= now:
+        profile.is_vip = False
+        profile.vip_expiry = None
+        profile.save(update_fields=['is_vip', 'vip_expiry'])
+        user.is_vip = False
+        user.vip_expiry = None
+        user.save(update_fields=['is_vip', 'vip_expiry'])
+        return False, None
+
+    updates = []
+    if profile.is_vip != bool(user.is_vip):
+        profile.is_vip = bool(user.is_vip)
+        updates.append('is_vip')
+    if profile.vip_expiry != user.vip_expiry:
+        profile.vip_expiry = user.vip_expiry
+        updates.append('vip_expiry')
+    if updates:
+        profile.save(update_fields=updates)
+
+    return is_active, expiry
+
+
+def _get_or_create_creator_account(user):
+    """Return creator account row used as pending/available revenue pool."""
+    return CreatorAccount.objects.get_or_create(user=user)[0]
+
+
+def _settle_creator_pending(account):
+    """Simple settlement stage: move pending revenue to available balance."""
+    if account.pending_vnd > 0:
+        account.available_vnd += account.pending_vnd
+        account.pending_vnd = Decimal('0.00')
+        account.save(update_fields=['available_vnd', 'pending_vnd', 'updated_at'])
+    return account
+
+
+def _add_one_month_safe(dt):
+    """Add one calendar month while clamping day to month end when needed."""
+    if dt is None:
+        return None
+
+    year = dt.year
+    month = dt.month + 1
+    if month > 12:
+        month = 1
+        year += 1
+
+    last_day = calendar.monthrange(year, month)[1]
+    day = min(dt.day, last_day)
+    return dt.replace(year=year, month=month, day=day)
+
+
+def _profile_avatar_url(request, profile):
+    """Build full avatar URL for profile image fields."""
+    try:
+        if not profile or not profile.avatar:
+            return ''
+        if request:
+            return request.build_absolute_uri(profile.avatar.url)
+        return profile.avatar.url
+    except Exception:
+        return ''
+
+
+def _is_notification_enabled(user, field_name):
+    """Check per-user notification preference (defaults to True)."""
+    profile = _get_or_create_profile(user)
+    return bool(getattr(profile, field_name, True))
+
+
+def _can_watch_video(user, video):
+    """Access rule: owner, free video, purchased access, or active VIP."""
+    if not user:
+        return False
+    if user.id == video.creator_id:
+        return True
+    if bool(getattr(video, 'is_free', False)):
+        return True
+    vip_active, _ = _refresh_vip_state(user)
+    if vip_active:
+        return True
+    return VideoAccess.objects.filter(user=user, video=video).exists()
+
+
 def _process_video_purchase(user, video):
-    """Unlock a video by moving TC between wallets and marking the session unlocked."""
+    """Unlock a specific video for the user with atomic TC deduction and 70/30 split."""
+    price_int, avg_rating = _compute_dynamic_price_tc(video)
+    if bool(getattr(video, 'is_free', False)):
+        price_int = 0
+    price = Decimal(str(price_int))
 
-    session, _ = WatchSession.objects.get_or_create(user=user, video=video)
-
-    if session.is_unlocked:
+    # Fast path for already-unlocked videos
+    if VideoAccess.objects.filter(user=user, video=video).exists():
         video_url = _safe_file_url(None, video.file_url)
-        user_wallet = Wallet.objects.filter(user=user).first()
-        remaining = user_wallet.balance if user_wallet else Decimal('0.00')
-
+        profile = _get_or_create_profile(user)
+        remaining_int = _sync_profile_legacy_balance(profile)
+        remaining = Decimal(str(remaining_int))
         return {
             'remaining_tc': remaining,
+            'remaining_balance': remaining_int,
+            'balance': remaining_int,
+            'balance_display': f"{_format_tc_vi(remaining_int)} TC",
             'video_url': video_url,
             'videoUrl': video_url,
-            'message': 'Video đã được mở khóa trước đó'
+            'price_tc': price,
+            'dynamic_price_tc': price_int,
+            'avg_rating': avg_rating,
+            'message': 'Video đã được mở khóa trước đó',
         }, None
 
-    price = video.price_tc
-
-    # video miễn phí
-    if price == 0:
-        session.is_unlocked = True
-        session.save()
-
-        user_wallet = Wallet.objects.filter(user=user).first()
-        remaining = user_wallet.balance if user_wallet else Decimal('0.00')
-
-        video_url = _safe_file_url(None, video.file_url)
-
-        return {
-            'remaining_tc': remaining,
-            'video_url': video_url,
-            'videoUrl': video_url
-        }, None
-
+    did_charge_user = False
     try:
-        paid_amount = process_view_payment(user, video)
-        session.is_unlocked = True
-        session.save(update_fields=['is_unlocked'])
-    except Exception as e:
-        return None, _json_error(str(e), status=500)
+        with transaction.atomic():
+            # Create access inside transaction so failures roll back the unlock record
+            access, created = VideoAccess.objects.select_for_update().get_or_create(user=user, video=video)
+            if not created:
+                profile = _get_or_create_profile(user)
+                remaining_int = _sync_profile_legacy_balance(profile)
+                remaining = Decimal(str(remaining_int))
+                video_url = _safe_file_url(None, video.file_url)
+                return {
+                    'remaining_tc': remaining,
+                    'remaining_balance': remaining_int,
+                    'balance': remaining_int,
+                    'balance_display': f"{_format_tc_vi(remaining_int)} TC",
+                    'video_url': video_url,
+                    'videoUrl': video_url,
+                    'price_tc': price,
+                    'dynamic_price_tc': price_int,
+                    'avg_rating': avg_rating,
+                    'message': 'Video đã được mở khóa trước đó',
+                }, None
 
+            vip_active, _ = _refresh_vip_state(user)
+
+            # Free videos (or VIP viewers) are unlocked without balance deduction
+            if price > 0 and not vip_active:
+                profile = UserProfile.objects.select_for_update().get_or_create(
+                    user=user,
+                    defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+                )[0]
+                wallet = _lock_wallet(user)
+                current_balance = _profile_balance_tc_int(profile)
+                if current_balance < price_int:
+                    raise ValueError('Số dư TC không đủ để mở khóa video này.')
+
+                next_balance = current_balance - price_int
+
+                UserProfile.objects.filter(pk=profile.pk).update(
+                    balance_tc=F('balance_tc') - Decimal(str(price_int)),
+                    wallet_balance=F('wallet_balance') - price_int,
+                )
+                profile.refresh_from_db(fields=['balance_tc', 'wallet_balance'])
+
+                Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') - Decimal(str(price_int)))
+                wallet.refresh_from_db(fields=['balance'])
+
+                Transaction.objects.create(
+                    sender=user,
+                    receiver=video.creator,
+                    tx_type='CONTENT_SALE',
+                    amount_tc=price,
+                    tc_added=Decimal('0.00'),
+                    reference_video=video,
+                    status='SUCCESS',
+                )
+
+                # Revenue split: 70% to creator pending_vnd (1 TC = 100 VND), 30% kept by platform.
+                creator_share_vnd = int(price_int * 0.7 * 100)
+                if user.id != video.creator_id and creator_share_vnd > 0:
+                    creator_account = CreatorAccount.objects.select_for_update().get_or_create(user=video.creator)[0]
+                    CreatorAccount.objects.filter(pk=creator_account.pk).update(
+                        pending_vnd=F('pending_vnd') + Decimal(str(creator_share_vnd)),
+                        total_earned_vnd=F('total_earned_vnd') + Decimal(str(creator_share_vnd)),
+                    )
+                    creator_account.refresh_from_db(fields=['pending_vnd', 'total_earned_vnd'])
+
+                    Transaction.objects.create(
+                        sender=user,
+                        receiver=video.creator,
+                        tx_type='CONTENT_SALE',
+                        amount_tc=Decimal(str(price_int)),
+                        amount_vnd=Decimal(str(creator_share_vnd)),
+                        tc_added=Decimal('0.00'),
+                        reference_video=video,
+                        status='PENDING',
+                    )
+                did_charge_user = True
+            else:
+                profile = _get_or_create_profile(user)
+                next_balance = _sync_profile_legacy_balance(profile)
+                wallet = Wallet.objects.filter(user=user).first()
+                if wallet and _tc_to_int(wallet.balance) != next_balance:
+                    Wallet.objects.filter(pk=wallet.pk).update(balance=Decimal(str(next_balance)))
+                    wallet.refresh_from_db(fields=['balance'])
+
+            session, _ = WatchSession.objects.get_or_create(user=user, video=video)
+            if not session.is_unlocked:
+                session.is_unlocked = True
+                session.save(update_fields=['is_unlocked'])
+
+            # Purchase notifications are only for newly-paid unlocks.
+            if did_charge_user:
+                buyer_text = f"Bạn đã mở khóa {video.title}. -{price_int} TC"
+                _create_notification(
+                    recipient=user,
+                    sender=video.creator,
+                    notification_type=Notification.TYPE_PURCHASE,
+                    text=buyer_text,
+                    link=f"video-detail.html?id={video.id}",
+                    video=video,
+                )
+
+                if user.id != video.creator_id:
+                    creator_share_vnd = int(price_int * 0.7 * 100)
+                    creator_text = f"{user.username} đã mua {video.title}. +{_format_vnd_vi(creator_share_vnd)} VND (Pending)"
+                    _create_notification(
+                        recipient=video.creator,
+                        sender=user,
+                        notification_type=Notification.TYPE_PURCHASE,
+                        text=creator_text,
+                        link=f"video-detail.html?id={video.id}",
+                        video=video,
+                    )
+
+    except Wallet.DoesNotExist:
+        return None, _json_error('Ví không tồn tại.', status=404)
+    except ValueError as exc:
+        return None, _json_error(str(exc), status=400)
+    except Exception as exc:
+        return None, _json_error(str(exc), status=500)
+
+    remaining_int = _sync_profile_legacy_balance(profile)
+    remaining = Decimal(str(remaining_int))
     video_url = _safe_file_url(None, video.file_url)
-    wallet = Wallet.objects.filter(user=user).first()
-    remaining = wallet.balance if wallet else Decimal('0.00')
-
     return {
         'remaining_tc': remaining,
+        'remaining_balance': remaining_int,
+        'balance': remaining_int,
+        'balance_display': f"{_format_tc_vi(remaining_int)} TC",
         'video_url': video_url,
-        'videoUrl': video_url
+        'videoUrl': video_url,
+        'price_tc': price,
+        'dynamic_price_tc': price_int,
+        'avg_rating': avg_rating,
     }, None
 
 def register_view(request):
@@ -292,9 +601,19 @@ def api_get_wallet(request):
         return _json_error('Unauthorized', status=401)
     
     try:
-        wallet = Wallet.objects.get(user=user)
+        profile = _get_or_create_profile(user)
+        wallet, _ = Wallet.objects.get_or_create(user=user)
+        balance_int = _sync_profile_legacy_balance(profile)
+
+        # Keep wallet mirrored for legacy code paths.
+        if _tc_to_int(wallet.balance) != balance_int:
+            wallet.balance = Decimal(str(balance_int))
+            wallet.save(update_fields=['balance', 'updated_at'])
+
         return _json_success({
-            'balance': float(wallet.balance),
+            'balance': balance_int,
+            'balance_tc': balance_int,
+            'balance_display': f"{_format_tc_vi(balance_int)} TC",
             'user_id': user.id,
             'username': user.username,
             'email': user.email,
@@ -311,16 +630,236 @@ def api_profile(request):
     if auth_error:
         return auth_error
 
-    # Ensure related rows exist so new users always see 5 TC
-    profile, _ = UserProfile.objects.get_or_create(user=user, defaults={'wallet_balance': 5})
+    # Profile is the source of truth for balance.
+    profile = _get_or_create_profile(user)
+    vip_active, vip_expiry = _refresh_vip_state(user, profile)
     wallet, _ = Wallet.objects.get_or_create(user=user)
+    creator_account = CreatorAccount.objects.filter(user=user).first()
+    balance_int = _sync_profile_legacy_balance(profile)
+
+    # Keep wallet mirror aligned for legacy screens.
+    if _tc_to_int(wallet.balance) != balance_int:
+        wallet.balance = Decimal(str(balance_int))
+        wallet.save(update_fields=['balance', 'updated_at'])
 
     return _json_success({
         'id': user.id,
         'username': user.username,
         'email': user.email,
-        'wallet_balance': profile.wallet_balance,
-        'balance': float(wallet.balance),
+        'join_date': user.date_joined.isoformat() if user.date_joined else None,
+        'join_date_display': user.date_joined.strftime('%d/%m/%Y') if user.date_joined else None,
+        'wallet_balance': balance_int,
+        'balance_tc': balance_int,
+        'wallet_balance_display': f"{_format_tc_vi(balance_int)} TC",
+        'balance': balance_int,
+        'balance_display': f"{_format_tc_vi(balance_int)} TC",
+        'is_vip': bool(vip_active),
+        'vip_expiry': vip_expiry.isoformat() if vip_expiry else None,
+        'vip_expiry_display': vip_expiry.strftime('%d/%m/%Y') if vip_expiry else None,
+        'creator_available_vnd': _tc_to_int(creator_account.available_vnd) if creator_account else 0,
+        'creator_pending_vnd': _tc_to_int(creator_account.pending_vnd) if creator_account else 0,
+        'creator_total_earned_vnd': _tc_to_int(creator_account.total_earned_vnd) if creator_account else 0,
+        'creator_available_balance': _tc_to_int(creator_account.available_vnd) if creator_account else 0,
+        'creator_pending_balance': _tc_to_int(creator_account.pending_vnd) if creator_account else 0,
+        'creator_total_earned': _tc_to_int(creator_account.total_earned_vnd) if creator_account else 0,
+    })
+
+
+@require_GET
+def api_me(request):
+    """API: Return latest profile/user data for global sync on page load."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    profile = _get_or_create_profile(user)
+    vip_active, vip_expiry = _refresh_vip_state(user, profile)
+    creator_account = CreatorAccount.objects.filter(user=user).first()
+    balance_int = _sync_profile_legacy_balance(profile)
+
+    return _json_success({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'join_date': user.date_joined.isoformat() if user.date_joined else None,
+        'join_date_display': user.date_joined.strftime('%d/%m/%Y') if user.date_joined else None,
+        'tc_balance': balance_int,
+        'balance_tc': balance_int,
+        'tc_balance_display': f"{_format_tc_vi(balance_int)} TC",
+        'avatar_url': _profile_avatar_url(request, profile),
+        'notify_comments': bool(profile.notify_comments),
+        'notify_follows': bool(profile.notify_follows),
+        'dark_mode': bool(profile.dark_mode),
+        'is_vip': bool(vip_active),
+        'vip_expiry': vip_expiry.isoformat() if vip_expiry else None,
+        'vip_expiry_display': vip_expiry.strftime('%d/%m/%Y') if vip_expiry else None,
+        'creator_available_vnd': _tc_to_int(creator_account.available_vnd) if creator_account else 0,
+        'creator_pending_vnd': _tc_to_int(creator_account.pending_vnd) if creator_account else 0,
+        'creator_total_earned_vnd': _tc_to_int(creator_account.total_earned_vnd) if creator_account else 0,
+        'creator_available_balance': _tc_to_int(creator_account.available_vnd) if creator_account else 0,
+        'creator_pending_balance': _tc_to_int(creator_account.pending_vnd) if creator_account else 0,
+        'creator_total_earned': _tc_to_int(creator_account.total_earned_vnd) if creator_account else 0,
+    })
+
+
+@csrf_exempt
+def api_user_settings(request):
+    """API: Get or update persisted UI settings for the authenticated user."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    profile = _get_or_create_profile(user)
+
+    if request.method == 'GET':
+        return _json_success({
+            'dark_mode': bool(profile.dark_mode),
+            'notify_comments': bool(profile.notify_comments),
+            'notify_follows': bool(profile.notify_follows),
+        })
+
+    if request.method in ('PATCH', 'POST'):
+        try:
+            data = _parse_json_body(request)
+        except ValueError as exc:
+            return _json_error(str(exc), status=400)
+
+        update_fields = []
+        if 'dark_mode' in data:
+            profile.dark_mode = bool(data.get('dark_mode'))
+            update_fields.append('dark_mode')
+        if 'notify_comments' in data:
+            profile.notify_comments = bool(data.get('notify_comments'))
+            update_fields.append('notify_comments')
+        if 'notify_follows' in data:
+            profile.notify_follows = bool(data.get('notify_follows'))
+            update_fields.append('notify_follows')
+
+        if update_fields:
+            profile.save(update_fields=update_fields)
+
+        return _json_success({
+            'dark_mode': bool(profile.dark_mode),
+            'notify_comments': bool(profile.notify_comments),
+            'notify_follows': bool(profile.notify_follows),
+        })
+
+    return _json_error('Method not allowed', status=405)
+
+
+@csrf_exempt
+@require_POST
+def api_me_change_password(request):
+    """API: Change password using Django PasswordChangeForm validation logic."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    form = PasswordChangeForm(user, data={
+        'old_password': data.get('old_password', ''),
+        'new_password1': data.get('new_password1', ''),
+        'new_password2': data.get('new_password2', ''),
+    })
+    if not form.is_valid():
+        return _json_error(form.errors.as_json(), status=400)
+
+    form.save()
+    return _json_success({'message': 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.'})
+
+
+@require_GET
+def api_check_username(request):
+    """API: Check if a username is available."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    username = (request.GET.get('username') or '').strip()
+    if not username:
+        return _json_error('Thiếu username cần kiểm tra!', status=400)
+
+    exists = User.objects.filter(username__iexact=username).exclude(id=user.id).exists()
+    return _json_success({'available': not exists})
+
+
+@csrf_exempt
+@require_POST
+def api_me_update_username(request):
+    """API: Update current username after availability check."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    new_username = (data.get('username') or '').strip()
+    if len(new_username) < 3:
+        return _json_error('Username phải có ít nhất 3 ký tự.', status=400)
+
+    if User.objects.filter(username__iexact=new_username).exclude(id=user.id).exists():
+        return _json_error('Username đã tồn tại.', status=409)
+
+    user.username = new_username
+    user.save(update_fields=['username'])
+
+    return _json_success({'message': 'Đổi username thành công.', 'username': user.username})
+
+
+@csrf_exempt
+@require_POST
+def api_me_upload_avatar(request):
+    """API: Update current user's avatar image via AJAX multipart upload."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    avatar = request.FILES.get('avatar')
+    if not avatar:
+        return _json_error('Thiếu file avatar!', status=400)
+
+    profile = _get_or_create_profile(user)
+    profile.avatar = avatar
+    profile.save(update_fields=['avatar'])
+
+    return _json_success({
+        'message': 'Cập nhật avatar thành công.',
+        'avatar_url': _profile_avatar_url(request, profile),
+    })
+
+
+@csrf_exempt
+@require_POST
+def api_me_preferences(request):
+    """API: Update profile preferences like notification toggles."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    profile = _get_or_create_profile(user)
+
+    if 'notify_comments' in data:
+        profile.notify_comments = bool(data.get('notify_comments'))
+    if 'notify_follows' in data:
+        profile.notify_follows = bool(data.get('notify_follows'))
+
+    profile.save(update_fields=['notify_comments', 'notify_follows'])
+
+    return _json_success({
+        'notify_comments': bool(profile.notify_comments),
+        'notify_follows': bool(profile.notify_follows),
     })
 
 def main_view(request):
@@ -461,6 +1000,38 @@ def api_course_detail(request, course_id):
         return _json_error('Khóa học không tồn tại.', status=404)
 
     if request.method == 'GET':
+        viewer = _get_auth_user(request)
+        videos = Video.objects.filter(course=course, is_deleted=False, is_active=True).order_by('created_at')
+        unlocked_video_ids = set()
+        if viewer:
+            unlocked_video_ids = set(
+                VideoAccess.objects.filter(user=viewer, video__course=course).values_list('video_id', flat=True)
+            )
+
+        lessons = []
+        viewer_is_vip = False
+        if viewer:
+            viewer_is_vip, _ = _refresh_vip_state(viewer)
+        for lesson in videos:
+            duration_seconds = int(lesson.duration_seconds or 0)
+            computed_price, _ = _compute_dynamic_price_tc(lesson)
+            if lesson.is_free:
+                computed_price = 0
+            is_unlocked = False
+            if viewer:
+                is_owner = lesson.creator_id == viewer.id or course.instructor_id == viewer.id
+                is_unlocked = is_owner or viewer_is_vip or lesson.id in unlocked_video_ids or computed_price == 0
+            lessons.append({
+                'id': lesson.id,
+                'title': lesson.title,
+                # Keep both keys for frontend compatibility while standardizing on duration_seconds.
+                'duration_seconds': duration_seconds,
+                'duration': duration_seconds,
+                'price_tc': computed_price,
+                'is_free': bool(lesson.is_free),
+                'is_unlocked': is_unlocked,
+            })
+
         return _json_success({
             'id': course.id,
             'title': course.title,
@@ -468,6 +1039,7 @@ def api_course_detail(request, course_id):
             'bundle_price_tc': float(course.bundle_price_tc),
             'category': course.category.name if course.category else None,
             'instructor': course.instructor.username,
+            'videos': lessons,
         })
 
     user, auth_error = _require_auth(request)
@@ -503,20 +1075,27 @@ def api_video_list_create(request):
     if request.method == 'GET':
         q = request.GET.get('q', '').strip()
         course_id = request.GET.get('course')
+        standalone = request.GET.get('standalone')
         qs = Video.objects.filter(is_deleted=False, is_active=True)
         if q:
             qs = qs.filter(Q(title__icontains=q))
         if course_id:
             qs = qs.filter(course_id=course_id)
+        if standalone is not None:
+            standalone_flag = str(standalone).lower() in {'1', 'true', 'yes'}
+            qs = qs.filter(is_standalone=standalone_flag)
         data = [
             {
                 'id': v.id,
                 'title': v.title,
                 'course': v.course_id,
                 'category': v.category.name if v.category else None,
-                'price_tc': float(v.price_tc),
+                'price_tc': int(v.price_tc),
                 'duration_seconds': v.duration_seconds,
                 'creator': v.creator.username,
+                'creator_id': v.creator_id,
+                'is_standalone': v.is_standalone,
+                'thumbnail': _safe_file_url(request, v.thumbnail),
                 'file_url': _safe_file_url(request, v.file_url),
             }
             for v in qs.order_by('-created_at')
@@ -564,15 +1143,19 @@ def api_video_detail(request, video_id):
         return _json_error('Video không tồn tại.', status=404)
 
     if request.method == 'GET':
+        user = _get_auth_user(request)
+        can_watch = _can_watch_video(user, video)
         return _json_success({
             'id': video.id,
             'title': video.title,
             'description': video.description,
-            'price_tc': float(video.price_tc),
+            'price_tc': int(video.price_tc),
             'course': video.course_id,
             'category': video.category.name if video.category else None,
             'duration_seconds': video.duration_seconds,
-            'file_url': _safe_file_url(request, video.file_url),
+            'is_standalone': video.is_standalone,
+            'is_locked': not can_watch,
+            'file_url': _safe_file_url(request, video.file_url) if can_watch else '',
             'thumbnail': _safe_file_url(request, video.thumbnail),
         })
 
@@ -655,21 +1238,19 @@ def api_get_video_detail(request, video_id):
     except Video.DoesNotExist:
         return _json_error('Video không tồn tại!', status=404)
 
-    is_owner = user.id == video.creator_id or (video.course and video.course.instructor_id == user.id)
-
+    is_owner = user.id == video.creator_id
+    vip_active, _ = _refresh_vip_state(user)
+    dynamic_price_tc, avg_rating = _compute_dynamic_price_tc(video)
+    if video.is_free:
+        dynamic_price_tc = 0
     session, _ = WatchSession.objects.get_or_create(user=user, video=video)
 
-    # Owners always see the video unlocked
-    if is_owner:
+    has_access = _can_watch_video(user, video)
+    if has_access and not session.is_unlocked:
         session.is_unlocked = True
         session.save(update_fields=['is_unlocked'])
 
-    # Auto-unlock free videos on first fetch
-    if video.price_tc == 0 and not session.is_unlocked:
-        session.is_unlocked = True
-        session.save(update_fields=['is_unlocked'])
-
-    locked = not session.is_unlocked
+    locked = not has_access
     following = Follow.objects.filter(follower=user, following=video.creator).exists()
 
     data = {
@@ -677,8 +1258,13 @@ def api_get_video_detail(request, video_id):
         'title': video.title,
         'description': video.description,
         'locked': locked,
-        'requiredTC': float(video.price_tc),
+        'is_locked': locked,
+        'price_tc': int(dynamic_price_tc),
+        'requiredTC': int(dynamic_price_tc),
         'is_owner': is_owner,
+        'is_free': bool(video.is_free),
+        'is_vip': bool(vip_active),
+        'avg_rating': avg_rating,
         'videoUrl': None if locked else _safe_file_url(request, video.file_url),
         'watchSessionId': session.id,
         'creator': {
@@ -707,9 +1293,36 @@ def api_unlock_video(request, video_id):
     payload, error = _process_video_purchase(user, video)
     if error:
         return error
-    if payload.get("video_url"):
-        payload["videoUrl"] = request.build_absolute_uri(payload["video_url"])
-        return _json_success({'message': 'Mở khóa video thành công!', **payload})
+    return _json_success({'message': 'Mở khóa video thành công!', **payload})
+
+
+@csrf_exempt
+@require_POST
+def api_unlock_video_by_body(request):
+    """API: Unlock a video by video_id in JSON body at /api/unlock-video/."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    video_id = data.get('video_id')
+    if not video_id:
+        return _json_error('Thiếu video_id!', status=400)
+
+    try:
+        video = Video.objects.get(id=video_id, is_active=True, is_deleted=False)
+    except Video.DoesNotExist:
+        return _json_error('Video không tồn tại!', status=404)
+
+    payload, error = _process_video_purchase(user, video)
+    if error:
+        return error
+
+    return _json_success({'message': 'Mở khóa video thành công!', **payload})
 @require_GET
 def api_get_courses(request):
     """API: Return active courses and categories for catalog display."""
@@ -735,6 +1348,48 @@ def api_categories(request):
     """API: Return categories only (id, name) for dropdowns."""
     categories = list(Category.objects.values('id', 'name'))
     return _json_success({'categories': categories})
+
+
+@require_GET
+def api_teachers(request):
+    """API: Return ranked teachers (creators) by total views then average rating."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        teachers_qs = (
+            User.objects.filter(uploaded_videos__is_active=True, uploaded_videos__is_deleted=False)
+            .distinct()
+            .annotate(
+                total_views=Count('uploaded_videos__watchsession', distinct=True),
+                avg_rating=Avg(
+                    'uploaded_videos__comments__rating',
+                    filter=Q(uploaded_videos__comments__rating__isnull=False),
+                ),
+            )
+            .order_by('-total_views', '-avg_rating', 'username')
+        )
+
+        data = []
+        for teacher in teachers_qs:
+            profile = _get_or_create_profile(teacher)
+            is_following = Follow.objects.filter(follower=user, following=teacher).exists()
+            data.append({
+                'id': teacher.id,
+                'username': teacher.username,
+                'avatar_url': _profile_avatar_url(request, profile) or f"https://ui-avatars.com/api/?name={teacher.username}",
+                'specialization': profile.specialization or 'Giang vien da linh vuc',
+                'bio': profile.bio or 'Chua cap nhat mo ta linh vuc giang day.',
+                'total_views': int(teacher.total_views or 0),
+                'avg_rating': round(float(teacher.avg_rating or 0), 2),
+                'followers_count': Follow.objects.filter(following=teacher).count(),
+                'is_following': bool(is_following),
+            })
+
+        return _json_success({'teachers': data})
+    except Exception as exc:
+        return _json_error(f'Khong the tai danh sach giao vien: {exc}', status=500)
     
 @csrf_exempt
 @require_POST
@@ -777,6 +1432,14 @@ def api_toggle_follow(request, creator_id=None):
         else:
             Follow.objects.create(follower=user, following=creator)
             is_following = True
+            if _is_notification_enabled(creator, 'notify_follows'):
+                _create_notification(
+                    recipient=creator,
+                    sender=user,
+                    notification_type=Notification.TYPE_FOLLOW,
+                    text=f"{user.username} đã theo dõi bạn",
+                    link=f"/channel.html?id={user.id}",
+                )
 
         followers_count = Follow.objects.filter(following=creator).count()
     except Exception as exc:
@@ -824,6 +1487,228 @@ def api_purchase_video(request):
 
 @csrf_exempt
 @require_POST
+def api_recharge_tc(request):
+    """API: Recharge TC by paying VND with fixed conversion 10,000 VND = 100 TC."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    amount_vnd = int(data.get('amount_vnd') or 10000)
+    if amount_vnd <= 0 or amount_vnd % 10000 != 0:
+        return _json_error('Số tiền nạp phải là bội số của 10.000 VND.', status=400)
+
+    tc_added = amount_vnd // 100
+
+    try:
+        with transaction.atomic():
+            profile = UserProfile.objects.select_for_update().get_or_create(
+                user=user,
+                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+            )[0]
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(user=user)
+
+            UserProfile.objects.filter(pk=profile.pk).update(
+                balance_tc=F('balance_tc') + Decimal(str(tc_added)),
+                wallet_balance=F('wallet_balance') + tc_added,
+            )
+            Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + Decimal(str(tc_added)))
+
+            profile.refresh_from_db(fields=['balance_tc', 'wallet_balance'])
+            new_balance = _profile_balance_tc_int(profile)
+
+            Transaction.objects.create(
+                sender=user,
+                receiver=user,
+                tx_type='RECHARGE',
+                amount_tc=Decimal(str(tc_added)),
+                amount_vnd=Decimal(str(amount_vnd)),
+                tc_added=Decimal(str(tc_added)),
+                status='SUCCESS',
+            )
+
+            _create_notification(
+                recipient=user,
+                sender=None,
+                notification_type=Notification.TYPE_PURCHASE,
+                text=f"Nạp thành công {amount_vnd:,} VND. +{tc_added} TC".replace(',', '.'),
+                link='profile.html#wallet',
+            )
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    return _json_success({
+        'message': 'Nạp TC thành công.',
+        'balance': new_balance,
+        'balance_display': f"{_format_tc_vi(new_balance)} TC",
+        'tc_added': tc_added,
+        'amount_vnd': amount_vnd,
+    })
+
+
+@csrf_exempt
+@require_POST
+def api_purchase_vip(request):
+    """API: Purchase or renew VIP by charging TC and extending expiry by one month."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    package_price_vnd = Decimal('149000')
+    vip_cost_tc = 149
+
+    try:
+        with transaction.atomic():
+            profile = UserProfile.objects.select_for_update().get_or_create(
+                user=user,
+                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+            )[0]
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(user=user)
+
+            balance_int = _sync_profile_legacy_balance(profile)
+            if balance_int < vip_cost_tc:
+                return _json_error('So du TC khong du de mua/gia han VIP.', status=400)
+
+            now = timezone.now()
+            current_expiry = profile.vip_expiry or user.vip_expiry
+            is_renewal = bool(current_expiry and current_expiry > now and (profile.is_vip or user.is_vip))
+            base_time = current_expiry if current_expiry and current_expiry > now else now
+            new_expiry = _add_one_month_safe(base_time)
+
+            new_balance_int = max(0, balance_int - vip_cost_tc)
+
+            profile.is_vip = True
+            profile.vip_expiry = new_expiry
+            profile.balance_tc = Decimal(str(new_balance_int))
+            profile.wallet_balance = new_balance_int
+            profile.save(update_fields=['is_vip', 'vip_expiry', 'balance_tc', 'wallet_balance'])
+
+            user.is_vip = True
+            user.vip_expiry = new_expiry
+            user.save(update_fields=['is_vip', 'vip_expiry'])
+
+            wallet.balance = Decimal(str(new_balance_int))
+            wallet.save(update_fields=['balance'])
+
+            Transaction.objects.create(
+                sender=user,
+                receiver=user,
+                tx_type='VIP_PURCHASE',
+                amount_tc=Decimal(str(vip_cost_tc)),
+                amount_vnd=package_price_vnd,
+                tc_added=Decimal('0.00'),
+                status='SUCCESS',
+            )
+
+            _create_notification(
+                recipient=user,
+                sender=None,
+                notification_type=Notification.TYPE_PURCHASE,
+                text=(
+                    f"Gia han VIP thanh cong den {new_expiry.strftime('%d/%m/%Y')}"
+                    if is_renewal else
+                    f"Kich hoat VIP thanh cong den {new_expiry.strftime('%d/%m/%Y')}"
+                ),
+                link='profile.html#wallet',
+            )
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    return _json_success({
+        'message': 'Gia han VIP thanh cong.' if is_renewal else 'Mua VIP thanh cong.',
+        'is_vip': True,
+        'is_renewal': is_renewal,
+        'vip_cost_tc': vip_cost_tc,
+        'balance': new_balance_int,
+        'balance_tc': new_balance_int,
+        'balance_display': f"{_format_tc_vi(new_balance_int)} TC",
+        'vip_expiry': new_expiry.isoformat(),
+        'vip_expiry_display': new_expiry.strftime('%d/%m/%Y'),
+    })
+
+
+@csrf_exempt
+@require_POST
+def api_withdraw_request(request):
+    """API: Create a withdrawal request when creator available balance is above threshold."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    try:
+        with transaction.atomic():
+            account = CreatorAccount.objects.select_for_update().get_or_create(user=user)[0]
+
+            available_vnd = _tc_to_int(account.available_vnd)
+            if available_vnd <= 50000:
+                return _json_error('Can toi thieu hon 50.000 VND kha dung de gui yeu cau rut.', status=400)
+
+            requested = data.get('amount_vnd')
+            if requested is None:
+                withdraw_vnd = available_vnd
+            else:
+                withdraw_vnd = int(requested)
+
+            if withdraw_vnd <= 50000:
+                return _json_error('So tien rut phai lon hon 50.000 VND.', status=400)
+            if withdraw_vnd > available_vnd:
+                return _json_error('So du kha dung khong du.', status=400)
+
+            CreatorAccount.objects.filter(pk=account.pk).update(
+                available_vnd=F('available_vnd') - Decimal(str(withdraw_vnd))
+            )
+            account.refresh_from_db(fields=['available_vnd'])
+
+            amount_vnd = Decimal(str(withdraw_vnd))
+            withdraw_tc = int(withdraw_vnd / 100)
+            request_row = WithdrawalRequest.objects.create(
+                user=user,
+                amount_tc=Decimal(str(withdraw_tc)),
+                amount_vnd=amount_vnd,
+                status='PENDING',
+                note='Auto-generated from profile withdrawal request',
+            )
+
+            Transaction.objects.create(
+                sender=user,
+                receiver=None,
+                tx_type='WITHDRAW_VND',
+                amount_tc=Decimal(str(withdraw_tc)),
+                amount_vnd=amount_vnd,
+                tc_added=Decimal('0.00'),
+                status='PENDING',
+            )
+
+            _create_notification(
+                recipient=user,
+                sender=None,
+                notification_type=Notification.TYPE_PURCHASE,
+                text=f"Yeu cau rut {_format_vnd_vi(withdraw_vnd)} VND da duoc tao (ma {request_row.id}).",
+                link='profile.html#wallet',
+            )
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    return _json_success({
+        'message': 'Đã gửi yêu cầu rút tiền.',
+        'request_id': request_row.id,
+        'amount_tc': withdraw_tc,
+        'amount_vnd': int(amount_vnd),
+        'remaining_available_vnd': _tc_to_int(account.available_vnd),
+    })
+
+
+@csrf_exempt
+@require_POST
 def api_purchase_course(request):
     """API: Purchase a course bundle using TC with strict balance check."""
     user, auth_error = _require_auth(request)
@@ -846,45 +1731,74 @@ def api_purchase_course(request):
 
     # Normalize price to Decimal for safe arithmetic
     price = Decimal(course.bundle_price_tc)
+    price_int = _tc_to_int(price)
+    if price_int <= 0:
+        return _json_success({
+            'message': 'Khóa học miễn phí.',
+            'remaining_tc': _tc_to_int(_get_or_create_profile(user).wallet_balance),
+        })
+
+    vip_active, _ = _refresh_vip_state(user)
+    if vip_active:
+        return _json_success({
+            'message': 'Tài khoản VIP mở khóa miễn phí khóa học.',
+            'remaining_tc': _tc_to_int(_get_or_create_profile(user).wallet_balance),
+        })
 
     try:
         with transaction.atomic():
+            buyer_profile = UserProfile.objects.select_for_update().get_or_create(
+                user=user,
+                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+            )[0]
             buyer_wallet = _lock_wallet(user)
-            buyer_balance = Decimal(buyer_wallet.balance)
-            if buyer_balance < price:
+            buyer_balance_int = _profile_balance_tc_int(buyer_profile)
+            if buyer_balance_int < price_int:
                 return _json_error('Insufficient funds', status=400)
 
-            instructor_wallet = _lock_wallet(course.instructor)
-
-            buyer_wallet.balance -= price
-            instructor_wallet.balance += price
-
-            buyer_wallet.save(update_fields=['balance'])
-            instructor_wallet.save(update_fields=['balance'])
-
-            # Keep profile wallet_balance in sync for UX that reads from profile
-            UserProfile.objects.update_or_create(
-                user=user,
-                defaults={'wallet_balance': int(buyer_wallet.balance)},
+            next_balance = buyer_balance_int - price_int
+            UserProfile.objects.filter(pk=buyer_profile.pk).update(
+                balance_tc=F('balance_tc') - Decimal(str(price_int)),
+                wallet_balance=F('wallet_balance') - price_int,
             )
-            UserProfile.objects.update_or_create(
-                user=course.instructor,
-                defaults={'wallet_balance': int(instructor_wallet.balance)},
-            )
+            Wallet.objects.filter(pk=buyer_wallet.pk).update(balance=F('balance') - Decimal(str(price_int)))
+
+            creator_share_vnd = int(price_int * 0.7 * 100)
+            if user.id != course.instructor_id and creator_share_vnd > 0:
+                creator_account = CreatorAccount.objects.select_for_update().get_or_create(user=course.instructor)[0]
+                CreatorAccount.objects.filter(pk=creator_account.pk).update(
+                    pending_vnd=F('pending_vnd') + Decimal(str(creator_share_vnd)),
+                    total_earned_vnd=F('total_earned_vnd') + Decimal(str(creator_share_vnd)),
+                )
 
             Transaction.objects.create(
                 sender=user,
                 receiver=course.instructor,
-                tx_type='SPEND_VIEW',
+                tx_type='CONTENT_SALE',
                 amount_tc=price,
+                tc_added=Decimal('0.00'),
                 reference_video=None,
+                status='SUCCESS',
             )
+
+            if user.id != course.instructor_id and creator_share_vnd > 0:
+                Transaction.objects.create(
+                    sender=user,
+                    receiver=course.instructor,
+                    tx_type='CONTENT_SALE',
+                    amount_tc=Decimal(str(price_int)),
+                    amount_vnd=Decimal(str(creator_share_vnd)),
+                    tc_added=Decimal('0.00'),
+                    status='PENDING',
+                )
+            buyer_profile.refresh_from_db(fields=['balance_tc', 'wallet_balance'])
+            next_balance = _profile_balance_tc_int(buyer_profile)
     except Wallet.DoesNotExist:
         return _json_error('Wallet not found.', status=404)
     except Exception as exc:
         return _json_error(str(exc), status=500)
 
-    return _json_success({'message': 'Mua khóa học thành công!', 'remaining_tc': float(buyer_wallet.balance)})
+    return _json_success({'message': 'Mua khóa học thành công!', 'remaining_tc': next_balance})
 
 @csrf_exempt
 @require_POST
@@ -900,27 +1814,40 @@ def api_post_comment(request):
         return _json_error(str(exc), status=400)
 
     video_id = data.get('video_id')
-    content = data.get('content')
+    content = (data.get('content') or '').strip()
     rating = data.get('rating')
+
+    try:
+        rating_value = int(rating)
+    except (TypeError, ValueError):
+        return _json_error('Số sao không hợp lệ. Chỉ chấp nhận từ 1 đến 5.', status=400)
+
+    if rating_value < 1 or rating_value > 5:
+        return _json_error('Số sao không hợp lệ. Chỉ chấp nhận từ 1 đến 5.', status=400)
+
+    if not content:
+        return _json_error('Bạn chưa nhập nội dung bình luận!', status=400)
 
     try:
         video = Video.objects.get(id=video_id)
     except Video.DoesNotExist:
         return _json_error('Video không tồn tại!', status=404)
 
-    # Create the comment entry (rating may be null)
     CommentReview.objects.create(
         user=user,
         video=video,
         content=content,
-        rating=rating,
+        rating=rating_value,
     )
 
-    if user != video.creator:
-        # Notify the creator about new feedback
-        Notification.objects.create(
-            user=video.creator,
-            content=f"🗣️ {user.username} đã bình luận về video '{video.title}' của bạn.",
+    if user != video.creator and _is_notification_enabled(video.creator, 'notify_comments'):
+        _create_notification(
+            recipient=video.creator,
+            sender=user,
+            notification_type=Notification.TYPE_RATING,
+            text=f"{user.username} đã đánh giá {rating_value} sao cho video của bạn",
+            link=f"/video-detail.html?id={video.id}",
+            video=video,
         )
 
     return _json_success({'message': 'Đã gửi bình luận!'})
@@ -933,21 +1860,115 @@ def api_get_notifications(request):
         return auth_error
 
     # Pull latest notifications; limit to keep payload small
-    notifs = Notification.objects.filter(user=user).order_by('-created_at')[:20]
+    notifs = Notification.objects.filter(recipient=user).select_related('sender', 'video').order_by('-created_at')[:20]
 
     data = [
         {
             'id': n.id,
-            'content': n.content,
+            'text': n.text,
+            'content': n.text,
+            'notification_type': n.notification_type,
+            'sender': {
+                'id': n.sender_id,
+                'username': n.sender.username if n.sender else None,
+            },
+            'sender_name': n.sender.username if n.sender else 'Hệ thống',
+            'video_id': n.video_id,
+            'video_title': n.video.title if n.video else None,
+            'video_thumbnail': _safe_file_url(request, n.video.thumbnail) if n.video and n.video.thumbnail else '',
             'is_read': n.is_read,
             'created_at': n.created_at.strftime("%H:%M %d/%m/%Y"),
         }
         for n in notifs
     ]
 
-    unread_count = Notification.objects.filter(user=user, is_read=False).count()
+    unread_count = Notification.objects.filter(recipient=user, is_read=False).count()
 
     return _json_success({'notifications': data, 'unread_count': unread_count})
+
+
+@csrf_exempt
+@require_POST
+def mark_notifications_as_read(request):
+    """API: Mark all unread notifications as read for current user."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    Notification.objects.filter(recipient=user, is_read=False).update(is_read=True)
+    return JsonResponse({'status': 'success'})
+
+
+@require_GET
+def api_video_comments(request, video_id):
+    """API: List comments with ratings for one video."""
+    comments = CommentReview.objects.filter(video_id=video_id).select_related('user').order_by('-created_at')[:100]
+    return JsonResponse([
+        {
+            'id': c.id,
+            'user': c.user.username,
+            'comment': c.content,
+            'content': c.content,
+            'rating': c.rating,
+            'created_at': c.created_at.strftime("%H:%M %d/%m/%Y"),
+        }
+        for c in comments
+    ], safe=False)
+
+
+@csrf_exempt
+@require_POST
+def api_video_comment(request, video_id):
+    """API: Path-style comment endpoint for frontend compatibility."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        data = _parse_json_body(request)
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+
+    content = (data.get('content') or data.get('comment') or '').strip()
+    rating = data.get('rating')
+
+    try:
+        rating_value = int(rating)
+    except (TypeError, ValueError):
+        rating_value = 0
+
+    if rating_value <= 0:
+        return _json_error('Bạn phải đánh giá sao trước khi bình luận!', status=400)
+
+    if rating_value < 1 or rating_value > 5:
+        return _json_error('Số sao không hợp lệ. Chỉ chấp nhận từ 1 đến 5.', status=400)
+
+    if not content:
+        return _json_error('Bạn chưa nhập nội dung bình luận!', status=400)
+
+    try:
+        video = Video.objects.get(id=video_id, is_active=True, is_deleted=False)
+    except Video.DoesNotExist:
+        return _json_error('Video không tồn tại!', status=404)
+
+    CommentReview.objects.create(
+        user=user,
+        video=video,
+        content=content,
+        rating=rating_value,
+    )
+
+    if user != video.creator and _is_notification_enabled(video.creator, 'notify_comments'):
+        _create_notification(
+            recipient=video.creator,
+            sender=user,
+            notification_type=Notification.TYPE_RATING,
+            text=f"{user.username} đã đánh giá {rating_value} sao cho video của bạn",
+            link=f"/video-detail.html?id={video.id}",
+            video=video,
+        )
+
+    return _json_success({'message': 'Đã gửi bình luận!'})
     
 @csrf_exempt
 @require_POST
@@ -971,8 +1992,17 @@ def api_reward_ads(request):
     try:
         with transaction.atomic():
             wallet = _lock_wallet(user)
-            wallet.balance += reward_amount  # Credit TC for watching an ad
-            wallet.save(update_fields=['balance', 'updated_at'])
+            profile = UserProfile.objects.select_for_update().get_or_create(
+                user=user,
+                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+            )[0]
+
+            Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + reward_amount)
+            UserProfile.objects.filter(pk=profile.pk).update(
+                balance_tc=F('balance_tc') + reward_amount,
+                wallet_balance=F('wallet_balance') + _tc_to_int(reward_amount),
+            )
+            wallet.refresh_from_db(fields=['balance'])
 
             Transaction.objects.create(
                 receiver=user,
@@ -986,6 +2016,45 @@ def api_reward_ads(request):
         return _json_error(str(exc), status=500)
 
     return _json_success({'message': f'Đã cộng {reward_amount} TC vào ví!', 'new_balance': wallet.balance})
+
+
+@csrf_exempt
+@require_POST
+def earn_tc(request):
+    """API: Add exactly 1 TC for current user and return updated balance."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    try:
+        with transaction.atomic():
+            profile, _ = UserProfile.objects.select_for_update().get_or_create(
+                user=user,
+                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+            )
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(user=user)
+
+            UserProfile.objects.filter(pk=profile.pk).update(
+                balance_tc=F('balance_tc') + Decimal('1.00'),
+                wallet_balance=F('wallet_balance') + 1,
+            )
+            Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + Decimal('1.00'))
+            wallet.refresh_from_db(fields=['balance'])
+
+            Transaction.objects.create(
+                receiver=user,
+                tx_type='EARN_ADS',
+                amount_tc=Decimal('1.00'),
+                status='SUCCESS',
+            )
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
+
+    new_balance_int = _tc_to_int(wallet.balance)
+    return _json_success({
+        'new_balance': new_balance_int,
+        'new_balance_display': f"{_format_tc_vi(new_balance_int)} TC",
+    })
 
 
 @csrf_exempt
@@ -1005,8 +2074,17 @@ def reward_ad_view(request):
     try:
         with transaction.atomic():
             wallet = Wallet.objects.select_for_update().get(user=user)
-            wallet.balance += Decimal('1.00')
-            wallet.save(update_fields=['balance', 'updated_at'])
+            profile = UserProfile.objects.select_for_update().get_or_create(
+                user=user,
+                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+            )[0]
+
+            Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + Decimal('1.00'))
+            UserProfile.objects.filter(pk=profile.pk).update(
+                balance_tc=F('balance_tc') + Decimal('1.00'),
+                wallet_balance=F('wallet_balance') + 1,
+            )
+            wallet.refresh_from_db(fields=['balance'])
 
             Transaction.objects.create(
                 receiver=user,
@@ -1157,18 +2235,26 @@ def api_create_course_with_video(request):
     category_id = data.get('category')
     price_raw = data.get('bundle_price_tc') or data.get('price_tc')
     video_url_raw = (data.get('video_url') or '').strip()
+    duration_raw = data.get('duration_seconds')
     video_file = files.get('video') or files.get('video_file')
     thumbnail_file = files.get('thumbnail')
 
     video_url = _extract_drive_src(video_url_raw)
 
-    if not title or not description or price_raw is None or (not video_file and not video_url):
+    if not title or not description or price_raw is None or duration_raw is None or (not video_file and not video_url):
         return _json_error('Thiếu dữ liệu cần thiết!', status=400)
 
     try:
         bundle_price_tc = Decimal(str(price_raw))
     except Exception:
         return _json_error('Giá TC không hợp lệ!', status=400)
+
+    try:
+        duration_seconds = int(duration_raw)
+        if duration_seconds <= 0:
+            raise ValueError('Thời lượng phải lớn hơn 0 giây.')
+    except Exception:
+        return _json_error('duration_seconds không hợp lệ!', status=400)
 
     form = CourseForm({
         'title': title,
@@ -1192,8 +2278,7 @@ def api_create_course_with_video(request):
                 creator=user,
                 course=course,
                 category=course.category,
-                price_tc=bundle_price_tc,
-                duration_seconds=0,
+                duration_seconds=duration_seconds,
             )
 
             if video_file:
