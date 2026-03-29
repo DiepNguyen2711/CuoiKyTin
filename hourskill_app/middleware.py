@@ -2,6 +2,7 @@ import time
 
 from django.contrib.auth import logout
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.utils.deprecation import MiddlewareMixin
 from django.core.cache import cache
 from django.utils import timezone
@@ -19,6 +20,13 @@ class SingleSessionMiddleware(MiddlewareMixin):
 
     cache_prefix = "active-session"
     ttl_seconds = 60 * 60 * 12  # keep record for 12h; refreshed per request
+
+    def _expects_json(self, request):
+        path = str(getattr(request, "path", "") or "")
+        if path.startswith("/api/"):
+            return True
+        accept = str(request.headers.get("Accept", "") or "").lower()
+        return "application/json" in accept
 
     def process_request(self, request):
         user = getattr(request, "user", None)
@@ -39,13 +47,22 @@ class SingleSessionMiddleware(MiddlewareMixin):
 
         if active_key != session_key:
             logout(request)
-            return JsonResponse(
-                {
-                    "status": "error",
-                    "message": "Phiên đăng nhập đã bị ngắt do đăng nhập trên thiết bị khác.",
-                },
-                status=401,
-            )
+            message = "Phiên đăng nhập đã bị ngắt do đăng nhập trên thiết bị khác."
+
+            if self._expects_json(request):
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": message,
+                    },
+                    status=401,
+                )
+
+            path = str(getattr(request, "path", "") or "")
+            if path.startswith("/admin"):
+                return redirect(f"/admin/login/?next={path}")
+
+            return redirect("/login.html")
 
         # Refresh TTL to keep the mapping alive while active
         cache.set(cache_key, session_key, timeout=self.ttl_seconds)

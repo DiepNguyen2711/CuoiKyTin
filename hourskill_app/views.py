@@ -40,7 +40,7 @@ from .models import (
 from .forms import CourseForm, VideoForm
 
 
-DEFAULT_AVATAR_URL = "https://placehold.co/128x128/e2e8f0/64748b?text=U"
+DEFAULT_AVATAR_URL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><rect width='100%' height='100%' fill='%23e2e8f0'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='56' fill='%2364758b'>U</text></svg>"
 
 
 def _json_error(message, status=400):
@@ -240,8 +240,8 @@ def _get_or_create_profile(user):
     return UserProfile.objects.get_or_create(
         user=user,
         defaults={
-            'wallet_balance': 5,
-            'balance_tc': Decimal('5.00'),
+            'wallet_balance': 30,
+            'balance_tc': Decimal('30.00'),
             'notify_comments': True,
             'notify_follows': True,
         },
@@ -313,6 +313,9 @@ def _profile_avatar_url(request, profile):
     """Build full avatar URL for profile image fields."""
     try:
         if not profile or not profile.avatar:
+            return DEFAULT_AVATAR_URL
+        avatar_name = str(getattr(profile.avatar, 'name', '') or '').strip().lower()
+        if avatar_name in {'default.png', 'avatars/default.png'}:
             return DEFAULT_AVATAR_URL
         if request:
             return request.build_absolute_uri(profile.avatar.url)
@@ -438,7 +441,7 @@ def _process_video_purchase(user, video):
             if price > 0 and not vip_active:
                 profile = UserProfile.objects.select_for_update().get_or_create(
                     user=user,
-                    defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+                    defaults={'wallet_balance': 30, 'balance_tc': Decimal('30.00')},
                 )[0]
                 wallet = _lock_wallet(user)
                 current_balance = _profile_balance_tc_int(profile)
@@ -1691,7 +1694,7 @@ def api_recharge_tc(request):
         with transaction.atomic():
             profile = UserProfile.objects.select_for_update().get_or_create(
                 user=user,
-                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+                defaults={'wallet_balance': 30, 'balance_tc': Decimal('30.00')},
             )[0]
             wallet, _ = Wallet.objects.select_for_update().get_or_create(user=user)
 
@@ -1748,7 +1751,7 @@ def api_purchase_vip(request):
         with transaction.atomic():
             profile = UserProfile.objects.select_for_update().get_or_create(
                 user=user,
-                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+                defaults={'wallet_balance': 30, 'balance_tc': Decimal('30.00')},
             )[0]
             wallet, _ = Wallet.objects.select_for_update().get_or_create(user=user)
 
@@ -2084,7 +2087,7 @@ def api_reward_ads(request):
             wallet = _lock_wallet(user)
             profile = UserProfile.objects.select_for_update().get_or_create(
                 user=user,
-                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+                defaults={'wallet_balance': 30, 'balance_tc': Decimal('30.00')},
             )[0]
 
             Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + reward_amount)
@@ -2120,7 +2123,7 @@ def earn_tc(request):
         with transaction.atomic():
             profile, _ = UserProfile.objects.select_for_update().get_or_create(
                 user=user,
-                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+                defaults={'wallet_balance': 30, 'balance_tc': Decimal('30.00')},
             )
             wallet, _ = Wallet.objects.select_for_update().get_or_create(user=user)
 
@@ -2166,7 +2169,7 @@ def reward_ad_view(request):
             wallet = Wallet.objects.select_for_update().get(user=user)
             profile = UserProfile.objects.select_for_update().get_or_create(
                 user=user,
-                defaults={'wallet_balance': 5, 'balance_tc': Decimal('5.00')},
+                defaults={'wallet_balance': 30, 'balance_tc': Decimal('30.00')},
             )[0]
 
             Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + Decimal('1.00'))

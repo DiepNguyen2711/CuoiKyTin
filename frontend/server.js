@@ -19,9 +19,14 @@ app.use(express.static(__dirname, {
   }
 }));
 
-// Fallback: any unknown path serves the main landing page
+// Default entry: opening the static server root lands on registration.
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'register.html'));
+});
+
+// Fallback: unknown paths also land on registration.
 app.use((req, res) => {
-    res.sendFile(path.join(__dirname, 'main.html'));
+    res.sendFile(path.join(__dirname, 'register.html'));
 });
 app.listen(PORT, () => {
   console.log(`Static frontend server running at http://localhost:${PORT}`);

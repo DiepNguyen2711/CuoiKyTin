@@ -23,5 +23,11 @@ def create_user_relations(sender, instance, created, **kwargs):
         wallet.save(update_fields=['balance'])
 
     # Profile keeps lightweight wallet_balance for quick reads
-    UserProfile.objects.get_or_create(user=instance, defaults={'wallet_balance': 30})
+    UserProfile.objects.get_or_create(
+        user=instance,
+        defaults={
+            'wallet_balance': 30,
+            'balance_tc': Decimal('30.00'),
+        },
+    )
         
