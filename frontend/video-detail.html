@@ -379,10 +379,13 @@ function canLearnerAccessVideo(videoIdToCheck, learnerId){
 	const lesson = lessons.find(item => String(item.id) === String(videoIdToCheck));
 	if(!lesson) return false;
 	if(Boolean(lesson.is_unlocked)) return true;
-	if(lesson.prerequisite_id && !lesson.prerequisite_completed){
-		return false;
-	}
-	return true;
+ if(typeof lesson.can_unlock === "boolean"){
+  return lesson.can_unlock;
+ }
+ if(lesson.prerequisite_id && !lesson.prerequisite_completed){
+  return false;
+ }
+ return true;
 }
 
 function syncCurrentVideoPriceUI(isLocked){
@@ -533,6 +536,7 @@ async function loadCourseItems(){
 				price_tc: Number(v.price_tc ?? computeTcFromDuration(v.duration_seconds ?? v.duration ?? 0)),
 				is_free: Boolean(v.is_free),
 				is_unlocked: Boolean(v.is_unlocked),
+				can_unlock: typeof v.can_unlock === "boolean" ? Boolean(v.can_unlock) : undefined,
 				prerequisite_id: v.prerequisite_id || null,
 				prerequisite_title: v.prerequisite_title || '',
 				prerequisite_completed: Boolean(v.prerequisite_completed),

@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" id="html-root">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chi tiết khóa học</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
   <link rel="stylesheet" href="assets/variables.css">
   <link rel="stylesheet" href="assets/tailwind.css">
   <script src="components/header-component.js"></script>
@@ -146,7 +150,7 @@
     }
   </style>
 </head>
-<body>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
   <div id="header-placeholder"></div>
   <script>
     if (window.HourskillNavigation?.inject) {
@@ -176,6 +180,20 @@
     const API_BASE = "http://127.0.0.1:8000";
     const token = localStorage.getItem("token");
     const params = new URLSearchParams(window.location.search);
+    const htmlRoot = document.getElementById('html-root');
+
+    function initTheme() {
+      const wantsDark = localStorage.getItem('color-theme') === 'dark'
+        || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+      if (wantsDark) {
+        htmlRoot.classList.add('dark');
+      } else {
+        htmlRoot.classList.remove('dark');
+      }
+    }
+
+    initTheme();
 
     const courseId = params.get("id") || params.get("course_id");
     const viewerId = localStorage.getItem("user_id") || sessionStorage.getItem("user_id") || "";
@@ -226,15 +244,25 @@
 
       videoListEl.innerHTML = videos.map((video) => {
         const videoPrice = Number(video.price_tc ?? computePriceByDuration(video.duration_seconds));
+        const isUnlocked = Boolean(video.is_unlocked || video.is_free);
+        const canUnlock = Boolean(video.can_unlock || isUnlocked);
+        const actionLabel = isUnlocked
+          ? "▶ Phát"
+          : canUnlock
+            ? "🔒 Mở khóa"
+            : "⛔ Chưa đủ điều kiện";
+        const itemStyle = isUnlocked
+          ? ""
+          : "opacity:0.88;";
         return `
           <a class="video-link" href="video-detail.html?id=${encodeURIComponent(video.id)}&course_id=${encodeURIComponent(courseId)}">
-            <article class="video-item">
+            <article class="video-item" style="${itemStyle}">
               <div class="video-left">
                 <p class="video-name">${video.title || "Video"}</p>
-                <p class="video-meta">Thời lượng: ${parseDuration(video.duration_seconds || 0)}</p>
+                <p class="video-meta">Thời lượng: ${parseDuration(video.duration_seconds || 0)}${isUnlocked ? "" : " • Chưa mở khóa"}</p>
               </div>
               <div class="video-right">
-                <span class="play-icon">▶ Phát</span>
+                <span class="play-icon">${actionLabel}</span>
                 <span class="price-tag">${videoPrice} TC</span>
               </div>
             </article>

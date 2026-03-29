@@ -38,6 +38,9 @@ from .models import (
 from .forms import CourseForm, VideoForm
 
 
+DEFAULT_AVATAR_URL = "https://placehold.co/128x128/e2e8f0/64748b?text=U"
+
+
 def _json_error(message, status=400):
     """Build a consistent JSON error response.
 
@@ -308,12 +311,12 @@ def _profile_avatar_url(request, profile):
     """Build full avatar URL for profile image fields."""
     try:
         if not profile or not profile.avatar:
-            return ''
+            return DEFAULT_AVATAR_URL
         if request:
             return request.build_absolute_uri(profile.avatar.url)
         return profile.avatar.url
     except Exception:
-        return ''
+        return DEFAULT_AVATAR_URL
 
 
 def _is_notification_enabled(user, field_name):
@@ -867,12 +870,50 @@ def api_me_upload_avatar(request):
     if not avatar:
         return _json_error('Thiếu file avatar!', status=400)
 
-    profile = _get_or_create_profile(user)
-    profile.avatar = avatar
-    profile.save(update_fields=['avatar'])
+    if not str(getattr(avatar, 'content_type', '')).startswith('image/'):
+        return _json_error('Avatar phải là file ảnh hợp lệ.', status=400)
+
+    max_size_bytes = 5 * 1024 * 1024
+    if int(getattr(avatar, 'size', 0) or 0) > max_size_bytes:
+        return _json_error('Ảnh quá lớn. Vui lòng chọn file <= 5MB.', status=400)
+
+    try:
+        profile = _get_or_create_profile(user)
+        profile.avatar = avatar
+        profile.save(update_fields=['avatar'])
+    except Exception:
+        return _json_error('Không thể lưu avatar. Vui lòng thử lại sau.', status=500)
 
     return _json_success({
         'message': 'Cập nhật avatar thành công.',
+        'avatar_url': _profile_avatar_url(request, profile),
+    })
+
+
+@csrf_exempt
+@require_POST
+def api_me_remove_avatar(request):
+    """API: Remove current avatar and reset profile avatar to default."""
+    user, auth_error = _require_auth(request)
+    if auth_error:
+        return auth_error
+
+    profile = _get_or_create_profile(user)
+    old_name = str(getattr(profile.avatar, 'name', '') or '')
+
+    # Reset to empty/default so UI always falls back to safe placeholder.
+    profile.avatar = ''
+    profile.save(update_fields=['avatar'])
+
+    # Best effort cleanup of uploaded file, skipping known default name.
+    if old_name and old_name != 'default.png':
+        try:
+            default_storage.delete(old_name)
+        except Exception:
+            pass
+
+    return _json_success({
+        'message': 'Đã gỡ avatar, quay về ảnh mặc định.',
         'avatar_url': _profile_avatar_url(request, profile),
     })
 
@@ -1081,7 +1122,9 @@ def api_course_detail(request, course_id):
                 is_unlocked = is_owner or viewer_is_vip or lesson.id in unlocked_video_ids or computed_price == 0
                 if is_owner or viewer_is_vip or computed_price == 0:
                     prerequisite_completed = True
-            can_access = bool(is_unlocked or prerequisite_completed)
+            # Access means the user can play now; prerequisite only controls unlock eligibility.
+            can_access = bool(is_unlocked)
+            can_unlock = bool(prerequisite_completed and not is_unlocked)
             lessons.append({
                 'id': lesson.id,
                 'title': lesson.title,
@@ -1093,6 +1136,7 @@ def api_course_detail(request, course_id):
                 'prerequisite_title': prerequisite_title,
                 'prerequisite_completed': bool(prerequisite_completed),
                 'can_access': can_access,
+                'can_unlock': can_unlock,
             })
 
         return _json_success({
@@ -1136,6 +1180,7 @@ def api_course_detail(request, course_id):
 def api_video_list_create(request):
     """List active videos or create a new video (creators only)."""
     if request.method == 'GET':
+        viewer = _get_auth_user(request)
         q = request.GET.get('q', '').strip()
         course_id = request.GET.get('course')
         standalone = request.GET.get('standalone')
@@ -1147,8 +1192,10 @@ def api_video_list_create(request):
         if standalone is not None:
             standalone_flag = str(standalone).lower() in {'1', 'true', 'yes'}
             qs = qs.filter(is_standalone=standalone_flag)
-        data = [
-            {
+        data = []
+        for v in qs.order_by('-created_at'):
+            can_watch = _can_watch_video(viewer, v)
+            data.append({
                 'id': v.id,
                 'title': v.title,
                 'course': v.course_id,
@@ -1158,11 +1205,10 @@ def api_video_list_create(request):
                 'creator': v.creator.username,
                 'creator_id': v.creator_id,
                 'is_standalone': v.is_standalone,
+                'is_unlocked': bool(can_watch),
                 'thumbnail': _safe_file_url(request, v.thumbnail),
-                'file_url': _safe_file_url(request, v.file_url),
-            }
-            for v in qs.order_by('-created_at')
-        ]
+                'file_url': _safe_file_url(request, v.file_url) if can_watch else '',
+            })
         return _json_success({'videos': data})
 
     if request.method == 'POST':
@@ -2413,6 +2459,8 @@ def api_channel_detail(request):
     except User.DoesNotExist:
         return _json_error('Người dùng không tồn tại!', status=404)
 
+    owner_profile = _get_or_create_profile(owner)
+
     # gather courses for owner
     courses = list(
         Course.objects.filter(instructor=owner, is_active=True).values(
@@ -2431,19 +2479,27 @@ def api_channel_detail(request):
     try:
         vids = Video.objects.filter(creator=owner, is_active=True)
         for v in vids:
+            can_watch = _can_watch_video(user, v)
             videos.append({
                 'id': v.id,
                 'title': v.title,
-                'thumbnail': _safe_file_url(v.thumbnail) if v.thumbnail else '',
+                'thumbnail': _safe_file_url(request, v.thumbnail) if v.thumbnail else '',
                 'duration_seconds': v.duration_seconds,
-                'video_url': _safe_file_url(v.file_url) if v.file_url else '',
+                'is_unlocked': bool(can_watch),
+                'video_url': _safe_file_url(request, v.file_url) if (can_watch and v.file_url) else '',
             })
     except Exception:
         # on any error, fall back to empty list
         videos = []
 
     return _json_success({
-        'owner': {'id': owner.id, 'username': owner.username},
+        'owner': {
+            'id': owner.id,
+            'username': owner.username,
+            'avatar_url': _profile_avatar_url(request, owner_profile) or f"https://ui-avatars.com/api/?name={owner.username}",
+            'specialization': owner_profile.specialization or 'Giang vien da linh vuc',
+            'bio': owner_profile.bio or 'Chua cap nhat mo ta linh vuc giang day.',
+        },
         'courses': courses,
         'followers_count': followers_count,
         'is_following': is_following,

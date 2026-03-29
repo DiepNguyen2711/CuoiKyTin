@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/me/update-username/', views.api_me_update_username, name='api_me_update_username'),
     path('api/me/change-password/', views.api_me_change_password, name='api_me_change_password'),
     path('api/me/upload-avatar/', views.api_me_upload_avatar, name='api_me_upload_avatar'),
+    path('api/me/remove-avatar/', views.api_me_remove_avatar, name='api_me_remove_avatar'),
     path('api/me/preferences/', views.api_me_preferences, name='api_me_preferences'),
     path('api/user/settings/', views.api_user_settings, name='api_user_settings'),
     path('api/survey/', views.api_survey, name='survey'),

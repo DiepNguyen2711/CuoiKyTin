@@ -40,6 +40,9 @@
                     <a id="headerProfileLink" href="profile.html" class="header-user-dropdown-item" role="menuitem">
                         👤 Trang cá nhân
                     </a>
+                    <a id="headerChannelLink" href="channel.html" class="header-user-dropdown-item" role="menuitem">
+                        📺 Kênh
+                    </a>
                     <button id="logoutBtn" type="button" class="header-user-dropdown-item text-left" role="menuitem">
                         🚪 Đăng xuất
                     </button>
@@ -66,7 +69,15 @@
         const userInfoBtn = document.getElementById('userInfo');
         const userMenuWrap = document.getElementById('headerUserMenuWrap');
         const userDropdown = document.getElementById('headerUserDropdown');
+        const channelLink = document.getElementById('headerChannelLink');
         const logoutBtn = document.getElementById('logoutBtn');
+
+        const currentUserId = localStorage.getItem('user_id') || sessionStorage.getItem('user_id') || '';
+        if (channelLink) {
+            channelLink.href = currentUserId
+                ? `channel.html?id=${encodeURIComponent(currentUserId)}`
+                : 'channel.html';
+        }
 
         const emitHeaderSearch = () => {
             const query = searchInput ? searchInput.value : '';
