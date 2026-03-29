@@ -204,13 +204,21 @@
         initHeaderNotifications({ apiBase: 'http://127.0.0.1:8000', token });
 
         function normalizeCoursePayload(course) {
+            const hasPurchaseAccess = Boolean(
+                course.is_purchased
+                || course.isPurchased
+                || course.purchased
+                || course.is_owned
+                || course.is_unlocked
+                || course.has_access
+            );
             return {
                 id: course.id,
                 title: course.title || 'Khóa học chưa đặt tên',
                 categoryText: course.category_text || course.category__name || 'Chưa phân loại',
                 creatorId: String(course.creator_id || course.instructor__id || course.instructor_id || ''),
                 creatorName: course.creator_name || course.instructor__username || course.instructor?.username || 'GV',
-                isPurchased: Boolean(course.is_purchased),
+                isPurchased: hasPurchaseAccess,
                 createdAt: Date.parse(course.created_at || '') || 0,
             };
         }
@@ -238,7 +246,7 @@
             const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(course.creatorName)}`;
             const purchasedBadge = course.isPurchased
                 ? '<span class="course-owned-badge">Đã mua</span>'
-                : '';
+                : '<span class="course-locked-badge">Chưa mở khóa</span>';
             const nameLink = course.creatorId
                 ? `<a href="channel.html?id=${course.creatorId}" class="text-blue-500 hover:underline">${course.creatorName}</a>`
                 : course.creatorName;

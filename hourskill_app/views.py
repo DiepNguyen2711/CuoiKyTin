@@ -1094,6 +1094,10 @@ def api_course_detail(request, course_id):
             unlocked_video_ids = set(
                 VideoAccess.objects.filter(user=viewer, video__course=course).values_list('video_id', flat=True)
             )
+            # Backward compatibility: older unlock flows marked WatchSession.is_unlocked without creating VideoAccess.
+            unlocked_video_ids.update(
+                WatchSession.objects.filter(user=viewer, video__course=course, is_unlocked=True).values_list('video_id', flat=True)
+            )
             course_video_ids = [v.id for v in videos]
             if course_video_ids:
                 progress = WatchSession.objects.filter(user=viewer, video_id__in=course_video_ids).values_list('video_id', 'watched_seconds')
@@ -1483,6 +1487,12 @@ def api_get_courses(request):
     if viewer:
         purchased_course_ids = set(
             VideoAccess.objects.filter(user=viewer, video__course__isnull=False)
+            .values_list('video__course_id', flat=True)
+            .distinct()
+        )
+        # Backward compatibility for historical unlock rows that only exist in WatchSession.
+        purchased_course_ids.update(
+            WatchSession.objects.filter(user=viewer, is_unlocked=True, video__course__isnull=False)
             .values_list('video__course_id', flat=True)
             .distinct()
         )
