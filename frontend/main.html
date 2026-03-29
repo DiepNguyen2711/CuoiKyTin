@@ -217,9 +217,14 @@
             const creator = video?.creator || 'Unknown Creator';
             const tc = Number(video?.price_tc || 0);
             const thumb = resolveThumbnail(video);
+            const videoId = video?.id;
+            const hasVideoId = videoId != null && videoId !== '';
+            const cardStateClass = hasVideoId
+                ? 'cursor-pointer'
+                : 'cursor-not-allowed opacity-80';
 
             return `
-                <a href="video-detail.html?id=${video.id}" class="featured-video-card block bg-slate-900 rounded-xl overflow-hidden border border-slate-700 hover:shadow-lg transition">
+                <article data-video-id="${hasVideoId ? escapeHtml(videoId) : ''}" role="button" tabindex="0" aria-label="Mo video ${escapeHtml(title)}" class="featured-video-card block bg-slate-900 rounded-xl overflow-hidden border border-slate-700 hover:shadow-lg transition ${cardStateClass}" style="cursor:${hasVideoId ? 'pointer' : 'not-allowed'}">
                     <div class="relative w-full aspect-video bg-black">
                         <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.src='${fallbackThumb}'" />
                         <span class="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">${tc} TC</span>
@@ -228,8 +233,17 @@
                         <h3 class="featured-video-title font-semibold text-white line-clamp-2">${escapeHtml(title)}</h3>
                         <p class="featured-video-creator text-sm text-slate-300 mt-2">${escapeHtml(creator)}</p>
                     </div>
-                </a>
+                </article>
             `;
+        }
+
+        function openFeaturedVideoCard(cardNode) {
+            const videoId = cardNode?.getAttribute?.('data-video-id') || '';
+            if (!videoId) {
+                window.showAlert?.('Video này chưa sẵn sàng để mở.', 'error');
+                return;
+            }
+            window.location.href = `video-detail.html?id=${encodeURIComponent(videoId)}`;
         }
 
         async function loadFeaturedVideos() {
@@ -269,6 +283,20 @@
                 empty.innerText = 'Không tải được video nổi bật.';
             }
         }
+
+        document.getElementById('standaloneGrid')?.addEventListener('click', (event) => {
+            const card = event.target?.closest?.('[data-video-id]');
+            if (!card) return;
+            openFeaturedVideoCard(card);
+        });
+
+        document.getElementById('standaloneGrid')?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            const card = event.target?.closest?.('[data-video-id]');
+            if (!card) return;
+                event.preventDefault();
+            openFeaturedVideoCard(card);
+        });
 
         loadFeaturedVideos();
     </script>
