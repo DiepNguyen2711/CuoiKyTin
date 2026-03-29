@@ -112,8 +112,15 @@
 
     .play-icon {
       font-size: 1rem;
-      color: #2563eb;
       font-weight: 700;
+    }
+
+    .video-status-owned {
+      color: #15803d;
+    }
+
+    .video-status-locked {
+      color: #334155;
     }
 
     .price-tag {
@@ -246,6 +253,8 @@
         const videoPrice = Number(video.price_tc ?? computePriceByDuration(video.duration_seconds));
         const isUnlocked = Boolean(video.is_unlocked || video.is_free);
         const canUnlock = Boolean(video.can_unlock || isUnlocked);
+        const statusLabel = isUnlocked ? "Đã mua" : "Chưa mở khóa";
+        const statusClass = isUnlocked ? "video-status-owned" : "video-status-locked";
         const actionLabel = isUnlocked
           ? "▶ Phát"
           : canUnlock
@@ -262,6 +271,7 @@
                 <p class="video-meta">Thời lượng: ${parseDuration(video.duration_seconds || 0)}${isUnlocked ? "" : " • Chưa mở khóa"}</p>
               </div>
               <div class="video-right">
+                <span class="play-icon ${statusClass}">${statusLabel}</span>
                 <span class="play-icon">${actionLabel}</span>
                 <span class="price-tag">${videoPrice} TC</span>
               </div>
