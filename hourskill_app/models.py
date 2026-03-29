@@ -312,9 +312,9 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, default='')
     # Flexible survey response storage for personalization
     survey_answers = models.JSONField(default=list, blank=True, null=True)
-    avatar = models.ImageField(upload_to='avatars/', default='default.png')
-    balance_tc = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('5.00'))
-    wallet_balance = models.IntegerField(default=5)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, default='')
+    balance_tc = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('30.00'))
+    wallet_balance = models.IntegerField(default=30)
     is_vip = models.BooleanField(default=False)
     vip_expiry = models.DateTimeField(null=True, blank=True)
     notify_comments = models.BooleanField(default=True)
