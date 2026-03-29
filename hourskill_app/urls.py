@@ -7,6 +7,7 @@ from . import views
 
 urlpatterns = [
     path('', views.homepage, name='homepage'),
+    path('<str:page_name>.html', views.frontend_page, name='frontend_page'),
     path('api/register/', views.api_register, name='api_register'),
     path('api/login/', views.api_login, name='api_login'),
     path('api/manage/courses/', views.api_course_list_create, name='api_course_list_create'),

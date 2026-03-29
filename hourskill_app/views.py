@@ -14,6 +14,8 @@ from django.db import transaction
 from django.db.models import Avg, Count, F, Q
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.template.loader import get_template
+from django.template import TemplateDoesNotExist
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
@@ -1334,6 +1336,22 @@ def homepage(request):
         'categories': categories,
     }
     return render(request, 'main.html', context)
+
+
+@require_GET
+def frontend_page(request, page_name):
+    """Serve frontend HTML pages via Django for local backend-only runs."""
+    safe_name = str(page_name or '').strip().lower()
+    if not safe_name or '/' in safe_name or '\\' in safe_name:
+        return _json_error('Trang không tồn tại.', status=404)
+
+    template_name = f'{safe_name}.html'
+    try:
+        get_template(template_name)
+    except TemplateDoesNotExist:
+        return _json_error('Trang không tồn tại.', status=404)
+
+    return render(request, template_name)
 
 @require_GET
 def api_get_video_detail(request, video_id):
