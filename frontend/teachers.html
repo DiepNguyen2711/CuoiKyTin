@@ -208,6 +208,17 @@
             return num > 0 ? num.toFixed(2) : '0.00';
         }
 
+        function hasPurchasedVideo(video) {
+            return Boolean(
+                video?.is_unlocked
+                || video?.is_purchased
+                || video?.isPurchased
+                || video?.purchased
+                || video?.has_access
+                || video?.is_free
+            );
+        }
+
         function buildTeacherCard(teacher) {
             const card = document.createElement('article');
             card.className = 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm hover:shadow-md transition';
@@ -297,6 +308,11 @@
             const creator = escapeHtml(video?.creator || 'Diep');
             const tc = Number(video?.price_tc || 0);
             const thumb = String(video?.thumbnail || '').trim() || fallbackThumb;
+            const isPurchased = hasPurchasedVideo(video);
+            const statusLabel = isPurchased ? 'Đã mua' : 'Chưa mở khóa';
+            const statusClass = isPurchased
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-slate-200 text-slate-700';
             const id = Number(video?.id || 0);
             const hasVideoId = Number.isFinite(id) && id > 0;
             const wrapperTag = hasVideoId ? 'a' : 'article';
@@ -307,11 +323,12 @@
                 <${wrapperTag}${wrapperHref} class="featured-video-card block bg-slate-900 rounded-xl overflow-hidden border border-slate-700 ${cursorClass} transition">
                     <div class="relative w-full aspect-video bg-black">
                         <img src="${thumb}" alt="${title}" class="w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.src='${fallbackThumb}'" />
+                        <span class="absolute top-2 left-2 text-xs px-2 py-1 rounded font-semibold ${statusClass}">${statusLabel}</span>
                         <span class="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">${tc} TC</span>
                     </div>
                     <div class="p-4">
                         <h3 class="featured-video-title font-semibold text-white line-clamp-2">${title}</h3>
-                        <p class="featured-video-creator text-sm text-slate-300 mt-2">${creator}</p>
+                        <p class="featured-video-creator text-sm text-slate-300 mt-2">${creator} • ${statusLabel}</p>
                     </div>
                 </${wrapperTag}>
             `;

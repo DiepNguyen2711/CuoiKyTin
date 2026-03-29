@@ -212,11 +212,27 @@
                 .replaceAll("'", '&#39;');
         }
 
+        function hasPurchasedVideo(video) {
+            return Boolean(
+                video?.is_unlocked
+                || video?.is_purchased
+                || video?.isPurchased
+                || video?.purchased
+                || video?.has_access
+                || video?.is_free
+            );
+        }
+
         function renderFeaturedVideoCard(video) {
             const title = video?.title || 'Video chưa có tiêu đề';
             const creator = video?.creator || 'Unknown Creator';
             const tc = Number(video?.price_tc || 0);
             const thumb = resolveThumbnail(video);
+            const isPurchased = hasPurchasedVideo(video);
+            const statusLabel = isPurchased ? 'Đã mua' : 'Chưa mở khóa';
+            const statusClass = isPurchased
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-slate-200 text-slate-700';
             const videoId = video?.id;
             const hasVideoId = videoId != null && videoId !== '';
             const cardStateClass = hasVideoId
@@ -233,11 +249,12 @@
                 <a href="${detailHref}" data-video-id="${hasVideoId ? escapeHtml(videoId) : ''}" aria-label="Mo video ${escapeHtml(title)}" onclick="${onClickGuard}" class="featured-video-card block bg-slate-900 rounded-xl overflow-hidden border border-slate-700 hover:shadow-lg transition ${cardStateClass}" style="cursor:${hasVideoId ? 'pointer' : 'not-allowed'}">
                     <div class="relative w-full aspect-video bg-black">
                         <img src="${thumb}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.src='${fallbackThumb}'" />
+                        <span class="absolute top-2 left-2 text-xs px-2 py-1 rounded font-semibold ${statusClass}">${statusLabel}</span>
                         <span class="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">${tc} TC</span>
                     </div>
                     <div class="p-4">
                         <h3 class="featured-video-title font-semibold text-white line-clamp-2">${escapeHtml(title)}</h3>
-                        <p class="featured-video-creator text-sm text-slate-300 mt-2">${escapeHtml(creator)}</p>
+                        <p class="featured-video-creator text-sm text-slate-300 mt-2">${escapeHtml(creator)} • ${statusLabel}</p>
                     </div>
                 </a>
             `;
