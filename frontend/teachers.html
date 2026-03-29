@@ -228,11 +228,11 @@
 
             card.innerHTML = `
                 <div class="flex flex-col md:flex-row md:items-center gap-6">
-                    <a href="profile.html?user_id=${teacherId}" class="shrink-0">
+                    <a href="channel.html?id=${teacherId}" class="shrink-0">
                         <img src="${teacherAvatar}" alt="${teacherName}" class="w-24 h-24 rounded-full object-cover border-2 border-blue-400" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/160x160/e2e8f0/64748b?text=U'" />
                     </a>
                     <div class="flex-1 min-w-0">
-                        <a href="profile.html?user_id=${teacherId}" class="block text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-500">${teacherName}</a>
+                        <a href="channel.html?id=${teacherId}" class="block text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-500">${teacherName}</a>
                         <p class="text-sm text-blue-600 dark:text-blue-400 font-semibold mt-1">${teacherSpecialization}</p>
                         <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">${teacherBio}</p>
                     </div>

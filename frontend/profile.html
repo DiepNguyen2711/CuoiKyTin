@@ -14,7 +14,6 @@
     <script src="components/navigation-injector.js"></script>
     <script src="api/header-notifications.js"></script>
     <script src="api/user-state.js"></script>
-    <script src="api/live-filter.js"></script>
 </head>
 <body class="profile-page bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen text-gray-800 dark:text-gray-200 transition-colors duration-300">
     <div id="header-placeholder"></div>
@@ -22,31 +21,16 @@
         if (window.HourskillNavigation?.inject) {
             window.HourskillNavigation.inject({
                 headerTargetId: 'header-placeholder',
-                pageTitle: 'CÀI ĐẶT',
+                pageTitle: 'TRANG CÁ NHÂN',
                 hideSidebar: true,
             });
         }
     </script>
 
-    <main class="w-full max-w-6xl mx-auto px-6 py-8 flex-1 profile-main-content">
-            <div class="flex justify-end mb-4">
+    <main class="w-full max-w-6xl mx-auto px-6 py-5 flex-1 profile-main-content">
+            <div class="flex justify-end mb-3">
                 <a href="main.html" class="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition">← Quay lại</a>
             </div>
-
-            <section class="mb-6" aria-label="Tìm kiếm nhanh cài đặt">
-                <div class="home-search max-w-[640px]" role="search">
-                    <input
-                        type="text"
-                        id="settingsSearchInput"
-                        class="home-search-input"
-                        placeholder="Tìm kiếm mục cài đặt..."
-                        autocomplete="off"
-                    >
-                    <button id="settingsSearchBtn" class="home-search-icon" type="button" aria-label="Lọc cài đặt">
-                        🔍
-                    </button>
-                </div>
-            </section>
 
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
             <section id="profile" class="mb-0" data-settings-item data-search-text="ho so avatar ten nguoi dung email id ngay tham gia">
@@ -57,37 +41,40 @@
                     <div class="flex items-start gap-8">
                         <!-- Avatar -->
                         <div class="flex-shrink-0">
-                            <img id="profileAvatarImg" src="https://placehold.co/128x128/e2e8f0/64748b?text=U" class="w-32 h-32 rounded-full object-cover border-4 border-blue-500 shadow-lg" alt="Avatar" />
-                            <label for="avatarInput" class="mt-3 inline-block text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded cursor-pointer">Chọn ảnh đại diện</label>
+                            <img id="profileAvatarImg" src="https://placehold.co/128x128/e2e8f0/64748b?text=U" class="w-32 h-32 rounded-full object-cover border-4 border-blue-500 shadow-lg" alt="Avatar" onerror="this.onerror=null;this.src='https://placehold.co/128x128/e2e8f0/64748b?text=U'" />
+                            <div class="mt-3 flex flex-col items-start gap-2">
+                                <label for="avatarInput" class="inline-block text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded cursor-pointer">Chọn ảnh đại diện</label>
+                                <button id="removeAvatarBtn" type="button" class="text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-2 rounded">Gỡ avatar</button>
+                            </div>
                             <input id="avatarInput" type="file" accept="image/*" class="hidden" />
                             <p id="avatarMsg" class="text-sm mt-3 min-h-6 px-3 py-2 rounded-md text-gray-700 dark:text-gray-200"></p>
                         </div>
                         
                         <!-- Info -->
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <div class="mb-6">
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Tên người dùng</p>
                                 <h2 class="text-3xl font-bold text-gray-800 dark:text-white" id="profileUsername">Guest</h2>
                             </div>
                             
-                            <div class="grid grid-cols-2 gap-6">
-                                <div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                                <div class="min-w-0">
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Email</p>
-                                    <p class="text-lg font-medium text-gray-700 dark:text-gray-300" id="profileEmail">N/A</p>
+                                    <p class="text-base md:text-lg font-medium text-gray-700 dark:text-gray-300 break-all leading-relaxed" id="profileEmail">N/A</p>
                                 </div>
-                                <div>
+                                <div class="min-w-0">
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">ID Người Dùng</p>
-                                    <p class="text-lg font-medium text-gray-700 dark:text-gray-300" id="profileUserId">--</p>
+                                    <p class="text-base md:text-lg font-medium text-gray-700 dark:text-gray-300 break-all leading-relaxed" id="profileUserId">--</p>
                                 </div>
-                                <div>
+                                <div class="min-w-0">
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Trạng Thái</p>
                                     <p class="text-lg font-medium">
                                         <span class="inline-block px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium">✅ Hoạt động</span>
                                     </p>
                                 </div>
-                                <div>
+                                <div class="min-w-0">
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Ngày Tham Gia</p>
-                                    <p class="text-lg font-medium text-gray-700 dark:text-gray-300" id="profileJoinDate">--</p>
+                                    <p class="text-base md:text-lg font-medium text-gray-700 dark:text-gray-300 leading-relaxed" id="profileJoinDate">--</p>
                                 </div>
                             </div>
 
@@ -225,6 +212,8 @@
 
     </main>
 
+    <div id="avatarToast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-lg shadow-xl text-sm font-semibold border"></div>
+
     <script>
         const API_BASE = 'http://127.0.0.1:8000';
         const token = localStorage.getItem('token');
@@ -234,6 +223,32 @@
 
         const htmlRoot = document.getElementById('html-root');
         const bodyRoot = document.body;
+        let avatarToastTimer = null;
+
+        function showAvatarToast(message, type = 'success') {
+            const toast = document.getElementById('avatarToast');
+            if (!toast) return;
+
+            if (avatarToastTimer) {
+                clearTimeout(avatarToastTimer);
+                avatarToastTimer = null;
+            }
+
+            const base = 'fixed top-5 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-lg shadow-xl text-sm font-semibold border';
+            const kind = type === 'error'
+                ? ' bg-red-50 text-red-700 border-red-200 dark:bg-red-900/70 dark:text-red-100 dark:border-red-700'
+                : type === 'info'
+                    ? ' bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/70 dark:text-blue-100 dark:border-blue-700'
+                    : ' bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/70 dark:text-emerald-100 dark:border-emerald-700';
+
+            toast.className = base + kind;
+            toast.textContent = message || '';
+            toast.classList.remove('hidden');
+
+            avatarToastTimer = window.setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2600);
+        }
 
         function setHeaderBalanceFromCache() {
             const cached = localStorage.getItem('wallet_balance');
@@ -619,34 +634,76 @@
 
         async function uploadAvatar(file) {
             if (!file) return;
-            const msgNode = document.getElementById('avatarMsg');
             const fd = new FormData();
             fd.append('avatar', file);
-            msgNode.innerText = 'Đang tải ảnh đại diện...';
-            msgNode.className = 'text-sm mt-3 min-h-6 px-3 py-2 rounded-md bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 font-medium';
+            showAvatarToast('Đang tải ảnh đại diện...', 'info');
 
-            const res = await fetch(`${API_BASE}/api/me/upload-avatar/`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                body: fd
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                msgNode.innerText = data.message || 'Upload avatar thất bại';
-                msgNode.className = 'text-sm mt-3 min-h-6 px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-200 font-semibold';
-                return;
+            try {
+                const res = await fetch(`${API_BASE}/api/me/upload-avatar/`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: fd
+                });
+
+                const data = await parseJsonResponse(res);
+                if (!res.ok) {
+                    throw new Error(data.message || 'Upload avatar thất bại');
+                }
+
+                const avatarUrl = data.avatar_url || '';
+                if (avatarUrl) {
+                    const profileAvatar = document.getElementById('profileAvatarImg');
+                    const headerAvatar = document.getElementById('headerAvatar');
+                    if (profileAvatar) profileAvatar.src = avatarUrl;
+                    if (headerAvatar) headerAvatar.src = avatarUrl;
+                    localStorage.setItem('avatar_url', avatarUrl);
+                }
+
+                const msgNode = document.getElementById('avatarMsg');
+                if (msgNode) msgNode.innerText = '';
+                showAvatarToast('Cập nhật avatar thành công', 'success');
+            } catch (error) {
+                const msgNode = document.getElementById('avatarMsg');
+                if (msgNode) msgNode.innerText = '';
+                showAvatarToast(error.message || 'Upload avatar thất bại', 'error');
             }
+        }
 
-            const avatarUrl = data.avatar_url || '';
-            if (avatarUrl) {
-                document.getElementById('profileAvatarImg').src = avatarUrl;
-                document.getElementById('headerAvatar').src = avatarUrl;
+        async function removeAvatar() {
+            const profileAvatar = document.getElementById('profileAvatarImg');
+            const headerAvatar = document.getElementById('headerAvatar');
+            const defaultAvatar = 'https://placehold.co/128x128/e2e8f0/64748b?text=U';
+
+            showAvatarToast('Đang gỡ avatar...', 'info');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/me/remove-avatar/`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                const data = await parseJsonResponse(res);
+                if (!res.ok) {
+                    throw new Error(data.message || 'Gỡ avatar thất bại');
+                }
+
+                const avatarUrl = data.avatar_url || defaultAvatar;
+                if (profileAvatar) profileAvatar.src = avatarUrl;
+                if (headerAvatar) headerAvatar.src = avatarUrl;
+                localStorage.setItem('avatar_url', avatarUrl);
+
+                const msgNode = document.getElementById('avatarMsg');
+                if (msgNode) msgNode.innerText = '';
+                showAvatarToast(data.message || 'Đã gỡ avatar', 'success');
+            } catch (error) {
+                const msgNode = document.getElementById('avatarMsg');
+                if (msgNode) msgNode.innerText = '';
+                showAvatarToast(error.message || 'Gỡ avatar thất bại', 'error');
             }
-
-            msgNode.innerText = 'Cập nhật avatar thành công';
-            msgNode.className = 'text-sm mt-3 min-h-6 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-200 font-semibold';
         }
 
         async function savePreferences() {
@@ -776,6 +833,7 @@
         document.getElementById('avatarInput').addEventListener('change', (event) => {
             uploadAvatar(event.target.files?.[0]).catch(() => {});
         });
+        document.getElementById('removeAvatarBtn').addEventListener('click', () => removeAvatar().catch(() => {}));
         document.getElementById('prefNotifyComments').addEventListener('change', savePreferences);
         document.getElementById('prefNotifyFollows').addEventListener('change', savePreferences);
         document.getElementById('rechargeBtn').addEventListener('click', () => rechargeTc().catch(() => {}));
@@ -785,40 +843,37 @@
             document.getElementById('security').scrollIntoView({ behavior: 'smooth' });
         });
 
-        const settingsSearchInput = document.getElementById('settingsSearchInput');
-        const settingsSearchBtn = document.getElementById('settingsSearchBtn');
-        const settingsFilter = window.HourskillLiveFilter?.create({
-            inputEl: settingsSearchInput,
-            buttonEl: settingsSearchBtn,
-            getItems: () => Array.from(document.querySelectorAll('[data-settings-item]')),
-            getText: (node) => [
-                node.dataset.searchText || '',
-                node.textContent || '',
-            ].join(' '),
-            onAfterFilter: ({ visibleCount, query }) => {
-                const prefMsg = document.getElementById('prefMsg');
-                if (!prefMsg) return;
-                if (!query) {
-                    prefMsg.innerText = '';
-                    prefMsg.className = 'text-xs text-gray-500 dark:text-gray-400';
-                    return;
+        function applyHeaderSettingsFilter(rawQuery) {
+            const query = String(rawQuery || '').trim().toLowerCase();
+            const items = Array.from(document.querySelectorAll('[data-settings-item]'));
+            const prefMsg = document.getElementById('prefMsg');
+
+            let visibleCount = 0;
+            items.forEach((node) => {
+                const text = [node.dataset.searchText || '', node.textContent || ''].join(' ').toLowerCase();
+                const matched = !query || text.includes(query);
+                node.classList.toggle('is-filter-hidden', !matched);
+                if (matched) {
+                    visibleCount += 1;
                 }
-                prefMsg.innerText = visibleCount > 0
-                    ? `Tìm thấy ${visibleCount} mục phù hợp.`
-                    : 'Không có mục cài đặt phù hợp.';
-                prefMsg.className = visibleCount > 0 ? 'text-xs text-emerald-600' : 'text-xs text-amber-600';
+            });
+
+            if (!prefMsg) return;
+            if (!query) {
+                prefMsg.innerText = '';
+                prefMsg.className = 'text-xs text-gray-500 dark:text-gray-400';
+                return;
             }
-        });
+
+            prefMsg.innerText = visibleCount > 0
+                ? `Tìm thấy ${visibleCount} mục phù hợp.`
+                : 'Không có mục cài đặt phù hợp.';
+            prefMsg.className = visibleCount > 0 ? 'text-xs text-emerald-600' : 'text-xs text-amber-600';
+        }
 
         window.addEventListener('hourskill:header-search', (event) => {
             const query = event?.detail?.query || '';
-            if (settingsSearchInput) {
-                settingsSearchInput.value = query;
-                settingsSearchInput.focus();
-            }
-            if (settingsFilter) {
-                settingsFilter.apply(query);
-            }
+            applyHeaderSettingsFilter(query);
         });
 
         document.getElementById('prefDarkMode').addEventListener('change', async (event) => {
