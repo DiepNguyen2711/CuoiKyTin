@@ -31,10 +31,8 @@
 
         <main class="ml-64 flex-1 px-10 py-12 bg-white dark:bg-gray-900 min-h-[calc(100vh-70px)] transition-colors duration-300">
             <section id="teacher-welcome" class="mb-10">
-                <div class="rounded-2xl bg-slate-900 text-white p-7 shadow-lg border border-slate-700">
-                    <h1 class="text-3xl md:text-4xl font-bold mb-3">Xin chào bạn đến với HOURSKILLS!</h1>
-                    <p class="text-slate-300 text-base md:text-lg">Khám phá hồ sơ giảng viên nổi bật và các video chất lượng cao từ cộng đồng HourSkills.</p>
-                </div>
+                <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-4 transition-colors">Xin chào bạn đến với HOURSKILLS!</h1>
+                <p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed transition-colors">Khám phá hồ sơ giảng viên nổi bật và các video chất lượng cao từ cộng đồng HourSkills.</p>
             </section>
 
             <section id="teacher-profile" class="mb-14">
@@ -300,9 +298,13 @@
             const tc = Number(video?.price_tc || 0);
             const thumb = String(video?.thumbnail || '').trim() || fallbackThumb;
             const id = Number(video?.id || 0);
+            const hasVideoId = Number.isFinite(id) && id > 0;
+            const wrapperTag = hasVideoId ? 'a' : 'article';
+            const wrapperHref = hasVideoId ? ` href="video-detail.html?id=${id}"` : '';
+            const cursorClass = hasVideoId ? 'hover:shadow-lg' : 'cursor-default';
 
             return `
-                <a href="video-detail.html?id=${id}" class="featured-video-card block bg-slate-900 rounded-xl overflow-hidden border border-slate-700 hover:shadow-lg transition">
+                <${wrapperTag}${wrapperHref} class="featured-video-card block bg-slate-900 rounded-xl overflow-hidden border border-slate-700 ${cursorClass} transition">
                     <div class="relative w-full aspect-video bg-black">
                         <img src="${thumb}" alt="${title}" class="w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.src='${fallbackThumb}'" />
                         <span class="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">${tc} TC</span>
@@ -311,7 +313,7 @@
                         <h3 class="featured-video-title font-semibold text-white line-clamp-2">${title}</h3>
                         <p class="featured-video-creator text-sm text-slate-300 mt-2">${creator}</p>
                     </div>
-                </a>
+                </${wrapperTag}>
             `;
         }
 
@@ -373,21 +375,21 @@
 
             const fallbackVideos = [
                 {
-                    id: 1,
+                    id: null,
                     title: 'Hướng dẫn cài đặt PowerBI Desktop',
                     creator: 'Diep',
                     price_tc: 8,
                     thumbnail: fallbackThumb,
                 },
                 {
-                    id: 2,
+                    id: null,
                     title: 'Python tricks - Viết code chuyên nghiệp',
                     creator: 'Diep',
                     price_tc: 8,
                     thumbnail: fallbackThumb,
                 },
                 {
-                    id: 3,
+                    id: null,
                     title: 'Rèn luyện kỹ năng nói hay và trôi chảy',
                     creator: 'Diep',
                     price_tc: 10,

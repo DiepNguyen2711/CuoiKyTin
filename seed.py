@@ -1,4 +1,5 @@
 import os
+import re
 from decimal import Decimal
 
 import django
@@ -14,6 +15,23 @@ from hourskill_app.models import User, Video  # noqa: E402
 def tc_from_duration(duration_seconds: int) -> int:
     """Compute TC price with rule: (duration_seconds + 30) // 60."""
     return (int(duration_seconds) + 30) // 60
+
+
+def normalize_drive_preview(raw_url: str) -> str:
+    """Return a stable Google Drive preview URL from any Drive share/embed format."""
+    value = str(raw_url or "").strip()
+    if not value:
+        return value
+
+    if "/preview" in value:
+        return value
+
+    # Handle iframe/embed/source links and common Drive share links.
+    match = re.search(r"/d/([a-zA-Z0-9_-]+)", value) or re.search(r"id=([a-zA-Z0-9_-]+)", value)
+    if match:
+        return f"https://drive.google.com/file/d/{match.group(1)}/preview"
+
+    return value.replace("/view", "/preview")
 
 
 def main() -> None:
@@ -62,12 +80,15 @@ def main() -> None:
     has_price_field = any(field.name == "price_tc" for field in Video._meta.get_fields())
 
     for item in videos_data:
+        normalized_file_url = normalize_drive_preview(item["file_url"])
         defaults = {
             "creator": owner,
             "description": "Standalone seed video for home feed",
-            "file_url": item["file_url"],
+            "file_url": normalized_file_url,
             "duration_seconds": item["duration_seconds"],
             "is_standalone": True,
+            # Make sample videos publicly watchable for new-user smoke testing.
+            "is_free": True,
             "is_active": True,
             "is_deleted": False,
         }
@@ -76,11 +97,13 @@ def main() -> None:
         if has_price_field:
             defaults["price_tc"] = Decimal(tc_from_duration(item["duration_seconds"]))
 
-        Video.objects.update_or_create(
+        video, _ = Video.objects.update_or_create(
             title=item["title"],
             creator=owner,
             defaults=defaults,
         )
+
+        print(f"[seed] video_id={video.id} title={video.title} url={normalized_file_url}")
 
     print("Seed successful! 3 videos added to Home Page.")
 
